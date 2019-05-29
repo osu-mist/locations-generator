@@ -1,4 +1,5 @@
 import logging
+import xml.etree.ElementTree as ET
 
 import requests
 
@@ -18,11 +19,9 @@ class LocationsGenerator:
         self.config = utils.load_config()
 
     def get_arcGIS_locations(self):
-        arcGIS_config = self.config['locations']['arcGISGenderInclusiveRR']
-        url = arcGIS_config['url']
-        params = arcGIS_config['params']
+        config = self.config['locations']['arcGISGenderInclusiveRR']
 
-        response = requests.get(url, params=params)
+        response = requests.get(config['url'], params=config['params'])
 
         if response.status_code == 200:
             arcGIS_data = {}
@@ -40,9 +39,9 @@ class LocationsGenerator:
         return arcGIS_data
 
     def get_campus_map_locations(self):
-        url = self.config['locations']['campusMap']['url']
+        config = self.config['locations']['campusMap']
 
-        response = requests.get(url)
+        response = requests.get(config['url'])
 
         if response.status_code == 200:
             campus_map_data = {}
@@ -51,8 +50,26 @@ class LocationsGenerator:
 
         return campus_map_data
 
+    def get_extention_locations(self):
+        config = self.config['locations']['extension']
+
+        response = requests.get(config['url'])
+
+        if response.status_code == 200:
+            extention_data = []
+            root = ET.fromstring(response.content)
+
+            for item in root:
+                item_data = {}
+                for attribute in item:
+                    item_data[attribute.tag] = attribute.text
+                extention_data.append(item_data)
+
+        return extention_data
+
 
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
     locationsGenerator.get_arcGIS_locations()
     locationsGenerator.get_campus_map_locations()
+    locationsGenerator.get_extention_locations()
