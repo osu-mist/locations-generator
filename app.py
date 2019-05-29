@@ -39,7 +39,20 @@ class LocationsGenerator:
 
         return arcGIS_data
 
+    def get_campus_map_locations(self):
+        url = self.config['locations']['campusMap']['url']
+
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            campus_map_data = {}
+            for location in response.json():
+                campus_map_data[location['id']] = location
+
+        return campus_map_data
+
 
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
     locationsGenerator.get_arcGIS_locations()
+    locationsGenerator.get_campus_map_locations()
