@@ -1,5 +1,5 @@
 import logging
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as et
 
 import requests
 
@@ -16,7 +16,8 @@ class LocationsGenerator:
         else:
             logging.basicConfig(level=logging.INFO)
 
-        self.config = utils.load_config()
+        self.config = utils.load_yaml('configuration.yaml')
+        self.extra_data = utils.load_extra_data()
 
     def get_arcGIS_locations(self):
         config = self.config['locations']['arcGISGenderInclusiveRR']
@@ -57,7 +58,7 @@ class LocationsGenerator:
 
         if response.status_code == 200:
             extention_data = []
-            root = ET.fromstring(response.content)
+            root = et.fromstring(response.content)
 
             for item in root:
                 item_data = {}
@@ -67,9 +68,21 @@ class LocationsGenerator:
 
         return extention_data
 
+    def get_extra_service_locations(self):
+        extra_locations = []
+        extra_services = []
+        for extra_location in self.extra_data:
+            if 'services' in extra_location['tags']:
+                extra_services.append(extra_location)
+            else:
+                extra_locations.append(extra_location)
+
+        return extra_locations, extra_services
+
 
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
-    locationsGenerator.get_arcGIS_locations()
-    locationsGenerator.get_campus_map_locations()
-    locationsGenerator.get_extention_locations()
+    # locationsGenerator.get_arcGIS_locations()
+    # locationsGenerator.get_campus_map_locations()
+    # locationsGenerator.get_extention_locations()
+    locationsGenerator.get_extra_service_locations()
