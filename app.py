@@ -1,8 +1,10 @@
+import asyncio
 from datetime import datetime, timedelta
 import logging
 import xml.etree.ElementTree as et
 
 from icalendar import Calendar
+import grequests
 import requests
 
 import utils
@@ -71,7 +73,7 @@ class LocationsGenerator:
 
         return extention_data
 
-    def get_dining_locations(self):
+    async def get_dining_locations(self):
         config = self.config['locations']['uhds']
         calendar_url = f'{config["url"]}/{config["calendar"]}'
         week_menu_url = f'{config["url"]}/{config["weeklyMenu"]}'
@@ -80,6 +82,7 @@ class LocationsGenerator:
         diners_data = {}
 
         if response.status_code == 200:
+            calendar_ids = []
             for raw_diner in response.json():
                 if raw_diner['calendar_id'] not in diners_data:
                     diner = {
@@ -101,25 +104,33 @@ class LocationsGenerator:
                             f'{week_menu_url}?loc={raw_diner["loc_id"]}'
                         )
 
-                    diner['open_hours'] = (
-                        self.get_location_hours(raw_diner['calendar_id'])
-                    )
+                    calendar_ids.append(raw_diner['calendar_id'])
+
                     diners_data[raw_diner['calendar_id']] = diner
+
+            diners_hours_responses = []
+            for calendar_id in calendar_ids:
+                url = (
+                    self.config['locations']['ical']['url']
+                        .replace('calendar-id', calendar_id)
+                )
+                diners_hours_responses.append(grequests.get(url))
+
+            for calendar_id, response in zip(
+                calendar_ids,
+                grequests.map(diners_hours_responses)
+            ):
+                week_events = self.get_location_hours(response)
+                diners_data[calendar_id]['open_hours'] = week_events
 
             return diners_data
 
-    def get_location_hours(self, calendar_id):
-        calendar_url = (
-            self.config['locations']['ical']['url']
-                .replace('calendar-id', calendar_id)
-        )
+    def get_location_hours(self, response):
         week_events = {}
 
         for day in range(7):
             week_day = self.today + timedelta(days=day)
             week_events[week_day.strftime('%Y-%m-%d')] = []
-
-        response = requests.get(calendar_url)
 
         if response.status_code == 200:
             calendar = Calendar.from_ical(response.text)
@@ -197,4 +208,5 @@ if __name__ == '__main__':
     # locationsGenerator.get_arcGIS_locations()
     # locationsGenerator.get_campus_map_locations()
     # locationsGenerator.get_extention_locations()
-    locationsGenerator.get_dining_locations()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(locationsGenerator.get_dining_locations())
