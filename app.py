@@ -73,8 +73,10 @@ class LocationsGenerator:
 
     def get_dining_locations(self):
         config = self.config['locations']['uhds']
+        calendar_url = f'{config["url"]}/{config["calendar"]}'
+        week_menu_url = f'{config["url"]}/{config["weeklyMenu"]}'
 
-        response = requests.get(config['url'])
+        response = requests.get(calendar_url)
         diners_data = {}
 
         if response.status_code == 200:
@@ -96,7 +98,7 @@ class LocationsGenerator:
 
                     if raw_diner['loc_id']:
                         diner['weekly_menu'] = (
-                            f'{config["weeklyMenuUrl"]}?loc={raw_diner["loc_id"]}'
+                            f'{week_menu_url}?loc={raw_diner["loc_id"]}'
                         )
 
                     diners_data[raw_diner['calendar_id']] = diner
