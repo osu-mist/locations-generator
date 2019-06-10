@@ -105,7 +105,6 @@ class LocationsGenerator:
                         )
 
                     calendar_ids.append(raw_diner['calendar_id'])
-
                     diners_data[raw_diner['calendar_id']] = diner
 
             diners_hours_responses = []
@@ -138,7 +137,6 @@ class LocationsGenerator:
             for event in calendar.walk():
                 if event.name == 'VEVENT':
                     event_day = event.get('dtstart').dt.strftime('%Y-%m-%d')
-
                     if event_day in week_events:
                         event_hours = {
                             'summary': event.get('summary'),
@@ -150,7 +148,6 @@ class LocationsGenerator:
                             'recurrence_id': event.get('recurrenceId'),
                             'last_modified': event.get('lastModified')
                         }
-
                         week_events[event_day].append(event_hours)
 
             return week_events
