@@ -36,8 +36,8 @@ def load_yaml(file):
             sys.exit(f'Unable to parse {file}')
 
 
-def load_extra_data():
-    raw_extra_data = load_yaml('contrib/extra-data.yaml')
+def load_extra_data(file):
+    raw_extra_data = load_yaml(file)
     extra_data = []
     for calendar in raw_extra_data['calendars']:
         service_location = {

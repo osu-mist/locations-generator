@@ -1,0 +1,15 @@
+arrow==0.4.2
+certifi==2019.3.9
+chardet==3.0.4
+entrypoints==0.3
+flake8==3.7.7
+ics==0.4
+idna==2.8
+mccabe==0.6.1
+pycodestyle==2.5.0
+pyflakes==2.1.1
+python-dateutil==2.8.0
+PyYAML==5.1
+requests==2.22.0
+six==1.12.0
+urllib3==1.25.3

@@ -1,6 +1,8 @@
 import logging
 import xml.etree.ElementTree as et
 
+import arrow
+from icalendar import Calendar
 import requests
 
 import utils
@@ -16,16 +18,17 @@ class LocationsGenerator:
         else:
             logging.basicConfig(level=logging.INFO)
 
+        self.today = arrow.utcnow()
         self.config = utils.load_yaml('configuration.yaml')
-        self.extra_data = utils.load_extra_data()
+        self.extra_data = utils.load_extra_data('contrib/extra-data.yaml')
 
     def get_arcGIS_locations(self):
         config = self.config['locations']['arcGISGenderInclusiveRR']
 
         response = requests.get(config['url'], params=config['params'])
+        arcGIS_data = {}
 
         if response.status_code == 200:
-            arcGIS_data = {}
             for feature in response.json()['features']:
                 attributes = feature['attributes']
                 arcGIS_data[attributes['BldID']] = {
@@ -43,9 +46,9 @@ class LocationsGenerator:
         config = self.config['locations']['campusMap']
 
         response = requests.get(config['url'])
+        campus_map_data = {}
 
         if response.status_code == 200:
-            campus_map_data = {}
             for location in response.json():
                 campus_map_data[location['id']] = location
 
@@ -55,9 +58,9 @@ class LocationsGenerator:
         config = self.config['locations']['extension']
 
         response = requests.get(config['url'])
+        extention_data = []
 
         if response.status_code == 200:
-            extention_data = []
             root = et.fromstring(response.content)
 
             for item in root:
@@ -68,16 +71,84 @@ class LocationsGenerator:
 
         return extention_data
 
-    def get_extra_service_locations(self):
-        extra_locations = []
-        extra_services = []
-        for extra_location in self.extra_data:
-            if 'services' in extra_location['tags']:
-                extra_services.append(extra_location)
-            else:
-                extra_locations.append(extra_location)
+    def get_dining_locations(self):
+        config = self.config['locations']['uhds']
 
-        return extra_locations, extra_services
+        response = requests.get(config['url'])
+        diners_data = {}
+
+        if response.status_code == 200:
+            for raw_diner in response.json():
+                if raw_diner['calendar_id'] not in diners_data:
+                    diner = {
+                        'concept_title': raw_diner['concept_title'],
+                        'zone': raw_diner['zone'],
+                        'calendar_id': raw_diner['calendar_id'],
+                        'start': raw_diner['start'],
+                        'end': raw_diner['end'],
+                        'type': 'dining'
+                    }
+
+                    if raw_diner['concept_coord']:
+                        coordinates = raw_diner['concept_coord'].split(',')
+                        diner['latitude'] = coordinates[0].strip()
+                        diner['longitude'] = coordinates[1].strip()
+
+                    if raw_diner['loc_id']:
+                        diner['weekly_menu'] = (
+                            f'{config["weeklyMenuUrl"]}?loc={raw_diner["loc_id"]}'
+                        )
+
+                    diners_data[raw_diner['calendar_id']] = diner
+
+            return diners_data
+
+    # def get_extra_service_locations(self):
+    #     extra_locations = []
+    #     extra_services = []
+    #     week_events = {}
+    #     for day in range(7):
+    #         week_day = self.today.replace(days=+day).format('YYYY-MM-DD')
+    #         week_events[week_day] = []
+
+    #     for extra_location in self.extra_data:
+    #         url = (
+    #             self.config['locations']['ical']['url']
+    #                 .replace('calendar-id', extra_location['calendar_id'])
+    #         )
+
+    #         response = requests.get(url)
+    #         calendar = Calendar.from_ical(response.text)
+
+    #         for component in calendar.walk():
+    #             if component.name == 'VEVENT':
+    #                 print('-------------')
+    #                 print(component.get('summary'))
+    #                 print(component.get('uid'))
+    #                 print(component.get('dtstart'))
+    #                 print(component.get('dtend'))
+    #                 print(component.get('dtstamp'))
+    #                 print(component.get('sequence'))
+
+            # for raw_event in calendar.events:
+            #     print(raw_event)
+            #     print('-------')
+            #     event_day = raw_event.begin.format('YYYY-MM-DD')
+                # if event_day in week_events:
+                #     event = {
+                #         'start': raw_event.begin,
+                #         'end': raw_event.end,
+
+                #     }
+
+                #     week_events[event_day].append(event)
+
+            # if 'services' in extra_location['tags']:
+            #     extra_services.append(extra_location)
+            # else:
+            #     extra_locations.append(extra_location)
+
+        # return extra_locations, extra_services
 
 
 if __name__ == '__main__':
@@ -85,4 +156,4 @@ if __name__ == '__main__':
     # locationsGenerator.get_arcGIS_locations()
     # locationsGenerator.get_campus_map_locations()
     # locationsGenerator.get_extention_locations()
-    locationsGenerator.get_extra_service_locations()
+    locationsGenerator.get_dining_locations()
