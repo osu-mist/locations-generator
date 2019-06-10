@@ -1,7 +1,7 @@
+from datetime import datetime, timedelta
 import logging
 import xml.etree.ElementTree as et
 
-import arrow
 from icalendar import Calendar
 import requests
 
@@ -18,7 +18,7 @@ class LocationsGenerator:
         else:
             logging.basicConfig(level=logging.INFO)
 
-        self.today = arrow.utcnow()
+        self.today = datetime.utcnow().date()
         self.config = utils.load_yaml('configuration.yaml')
         self.extra_data = utils.load_extra_data('contrib/extra-data.yaml')
 
@@ -101,9 +101,48 @@ class LocationsGenerator:
                             f'{week_menu_url}?loc={raw_diner["loc_id"]}'
                         )
 
+                    diner['open_hours'] = (
+                        self.get_location_hours(raw_diner['calendar_id'])
+                    )
                     diners_data[raw_diner['calendar_id']] = diner
 
             return diners_data
+
+    def get_location_hours(self, calendar_id):
+        calendar_url = (
+            self.config['locations']['ical']['url']
+                .replace('calendar-id', calendar_id)
+        )
+        week_events = {}
+
+        for day in range(7):
+            week_day = self.today + timedelta(days=day)
+            week_events[week_day.strftime('%Y-%m-%d')] = []
+
+        response = requests.get(calendar_url)
+
+        if response.status_code == 200:
+            calendar = Calendar.from_ical(response.text)
+
+            for event in calendar.walk():
+                if event.name == 'VEVENT':
+                    event_day = event.get('dtstart').dt.strftime('%Y-%m-%d')
+
+                    if event_day in week_events:
+                        event_hours = {
+                            'summary': event.get('summary'),
+                            'uid': event.get('uid'),
+                            'start': event.get('dtstart'),
+                            'end': event.get('dtend'),
+                            'dtstamp': event.get('dtstamp'),
+                            'sequence': event.get('sequence'),
+                            'recurrence_id': event.get('recurrenceId'),
+                            'last_modified': event.get('lastModified')
+                        }
+
+                        week_events[event_day].append(event_hours)
+
+            return week_events
 
     # def get_extra_service_locations(self):
     #     extra_locations = []
@@ -122,15 +161,15 @@ class LocationsGenerator:
     #         response = requests.get(url)
     #         calendar = Calendar.from_ical(response.text)
 
-    #         for component in calendar.walk():
-    #             if component.name == 'VEVENT':
+    #         for event in calendar.walk():
+    #             if event.name == 'VEVENT':
     #                 print('-------------')
-    #                 print(component.get('summary'))
-    #                 print(component.get('uid'))
-    #                 print(component.get('dtstart'))
-    #                 print(component.get('dtend'))
-    #                 print(component.get('dtstamp'))
-    #                 print(component.get('sequence'))
+    #                 print(event.get('summary'))
+    #                 print(event.get('uid'))
+    #                 print(event.get('dtstart'))
+    #                 print(event.get('dtend'))
+    #                 print(event.get('dtstamp'))
+    #                 print(event.get('sequence'))
 
             # for raw_event in calendar.events:
             #     print(raw_event)
