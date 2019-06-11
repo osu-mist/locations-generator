@@ -24,16 +24,16 @@ class LocationsGenerator:
         self.config = utils.load_yaml('configuration.yaml')
         self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
 
-    def get_arcGIS_locations(self):
-        config = self.config['locations']['arcGISGenderInclusiveRR']
+    def get_arcGis_locations(self):
+        config = self.config['locations']['arcGisGenderInclusiveRR']
 
         response = requests.get(config['url'], params=config['params'])
-        arcGIS_data = {}
+        arcGis_data = {}
 
         if response.status_code == 200:
             for feature in response.json()['features']:
                 attributes = feature['attributes']
-                arcGIS_data[attributes['BldID']] = {
+                arcGis_data[attributes['BldID']] = {
                     'id': attributes['BldID'],
                     'name': attributes['BldNam'],
                     'abbreviation': attributes['BldNamAbr'],
@@ -42,7 +42,75 @@ class LocationsGenerator:
                     'restroom_locations': attributes['LocaAll']
                 }
 
-        return arcGIS_data
+        return arcGis_data
+
+    def get_arcGis_coordinates(self):
+        config = self.config['locations']['coordinates']
+        buildings_coordinates = utils.load_json(config['buildings'])
+
+        arcGis_coordinates = {}
+
+        for feature in buildings_coordinates['features']:
+            properties = feature['properties']
+            arcGis_location = {
+                'id': properties['BldID'],
+                'name': properties['BldNam'],
+                'abbreviation': properties['BldNamAbr'],
+                'latitude': properties['Cent_Lat'],
+                'longitude': properties['Cent_Lon']
+            }
+
+            if feature['geometry']:
+                geometry = feature['geometry']
+                arcGis_location['coordinates'] = geometry['coordinates']
+                arcGis_location['coordinates_type'] = geometry['type']
+
+            arcGis_coordinates[properties['BldID']] = arcGis_location
+
+        return arcGis_coordinates
+
+    def get_parking_locations(self):
+
+        def __is_valid_field(field):
+            return field and field.strip()
+
+        config = self.config['locations']['coordinates']
+        parkings_coordinates = utils.load_json(config['parkings'])
+
+        parking_locations = []
+        ignored_parkings = []
+
+        for feature in parkings_coordinates['features']:
+            properties = feature['properties']
+            prop_id = properties['Prop_ID']
+            parking_zone_group = properties['ZoneGroup']
+
+            if (
+                __is_valid_field(prop_id)
+                and __is_valid_field(parking_zone_group)
+            ):
+                parking_location = {
+                    'id': f'{prop_id}{parking_zone_group}',
+                    'description': properties['AiM_Desc'],
+                    'prop_id': prop_id,
+                    'parking_zone_group': parking_zone_group,
+                    'latitude': properties['Cent_Lat'],
+                    'longitude': properties['Cent_Lon'],
+                    'ada_parking_space_count': properties['ADA_Spc'],
+                    'ev_parking_spaceCount': properties['EV_Spc'],
+                    'motorcycle_parking_space_count': properties['MCycle_Spc']
+                }
+
+                if feature['geometry']:
+                    geometry = feature['geometry']
+                    parking_location['coordinates'] = geometry['coordinates']
+                    parking_location['coordinates_type'] = geometry['type']
+
+                parking_locations.append(parking_location)
+            else:
+                ignored_parkings.append(properties['OBJECTID'])
+
+        return parking_locations
 
     def get_campus_map_locations(self):
         config = self.config['locations']['campusMap']
@@ -194,9 +262,11 @@ class LocationsGenerator:
 
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
-    # locationsGenerator.get_arcGIS_locations()
+    # locationsGenerator.get_arcGis_locations()
+    # locationsGenerator.get_arcGis_coordinates()
+    locationsGenerator.get_parking_locations()
     # locationsGenerator.get_campus_map_locations()
     # locationsGenerator.get_extention_locations()
-    loop = asyncio.get_event_loop()
+    # loop = asyncio.get_event_loop()
     # loop.run_until_complete(locationsGenerator.get_dining_locations())
-    loop.run_until_complete(locationsGenerator.get_extra_data())
+    # loop.run_until_complete(locationsGenerator.get_extra_data())
