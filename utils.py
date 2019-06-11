@@ -34,20 +34,3 @@ def load_yaml(file):
         except yaml.YAMLError as error:
             logging.debug(error)
             sys.exit(f'Unable to parse {file}')
-
-
-def load_extra_data(file):
-    raw_extra_data = load_yaml(file)
-    extra_data = []
-    for calendar in raw_extra_data['calendars']:
-        service_location = {
-            'concept_title': calendar.get('id'),
-            'calendar_id': calendar.get('calendarId'),
-            'merge': calendar.get('merge'),
-            'parent': calendar.get('parent'),
-            'tags': calendar.get('tags'),
-            'type': calendar.get('type')
-        }
-        extra_data.append(service_location)
-
-    return extra_data

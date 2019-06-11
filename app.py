@@ -22,7 +22,7 @@ class LocationsGenerator:
 
         self.today = datetime.utcnow().date()
         self.config = utils.load_yaml('configuration.yaml')
-        self.extra_data = utils.load_extra_data('contrib/extra-data.yaml')
+        self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
 
     def get_arcGIS_locations(self):
         config = self.config['locations']['arcGISGenderInclusiveRR']
@@ -84,18 +84,19 @@ class LocationsGenerator:
         if response.status_code == 200:
             calendar_ids = []
             for raw_diner in response.json():
+                calendar_id = raw_diner.get('calendar_id')
                 if raw_diner['calendar_id'] not in diners_data:
                     diner = {
-                        'concept_title': raw_diner['concept_title'],
-                        'zone': raw_diner['zone'],
-                        'calendar_id': raw_diner['calendar_id'],
-                        'start': raw_diner['start'],
-                        'end': raw_diner['end'],
+                        'concept_title': raw_diner.get('concept_title'),
+                        'zone': raw_diner.get('zone'),
+                        'calendar_id': calendar_id,
+                        'start': raw_diner.get('start'),
+                        'end': raw_diner.get('end'),
                         'type': 'dining'
                     }
 
-                    if raw_diner['concept_coord']:
-                        coordinates = raw_diner['concept_coord'].split(',')
+                    if raw_diner.get('concept_coord'):
+                        coordinates = raw_diner.get('concept_coord').split(',')
                         diner['latitude'] = coordinates[0].strip()
                         diner['longitude'] = coordinates[1].strip()
 
@@ -104,8 +105,8 @@ class LocationsGenerator:
                             f'{week_menu_url}?loc={raw_diner["loc_id"]}'
                         )
 
-                    calendar_ids.append(raw_diner['calendar_id'])
-                    diners_data[raw_diner['calendar_id']] = diner
+                    calendar_ids.append(calendar_id)
+                    diners_data[calendar_id] = diner
 
             diners_hours_responses = []
             for calendar_id in calendar_ids:
@@ -119,17 +120,17 @@ class LocationsGenerator:
                 calendar_ids,
                 grequests.map(diners_hours_responses)
             ):
-                week_events = self.get_location_hours(response)
-                diners_data[calendar_id]['open_hours'] = week_events
+                open_hours = self.get_location_open_hours(response)
+                diners_data[calendar_id]['open_hours'] = open_hours
 
             return diners_data
 
-    def get_location_hours(self, response):
-        week_events = {}
+    def get_location_open_hours(self, response):
+        open_hours = {}
 
         for day in range(7):
             week_day = self.today + timedelta(days=day)
-            week_events[week_day.strftime('%Y-%m-%d')] = []
+            open_hours[week_day.strftime('%Y-%m-%d')] = []
 
         if response.status_code == 200:
             calendar = Calendar.from_ical(response.text)
@@ -137,7 +138,7 @@ class LocationsGenerator:
             for event in calendar.walk():
                 if event.name == 'VEVENT':
                     event_day = event.get('dtstart').dt.strftime('%Y-%m-%d')
-                    if event_day in week_events:
+                    if event_day in open_hours:
                         event_hours = {
                             'summary': event.get('summary'),
                             'uid': event.get('uid'),
@@ -148,56 +149,53 @@ class LocationsGenerator:
                             'recurrence_id': event.get('recurrenceId'),
                             'last_modified': event.get('lastModified')
                         }
-                        week_events[event_day].append(event_hours)
+                        open_hours[event_day].append(event_hours)
 
-            return week_events
+            return open_hours
 
-    # def get_extra_service_locations(self):
-    #     extra_locations = []
-    #     extra_services = []
-    #     week_events = {}
-    #     for day in range(7):
-    #         week_day = self.today.replace(days=+day).format('YYYY-MM-DD')
-    #         week_events[week_day] = []
+    async def get_extra_data(self):
+        extra_locations = []
+        extra_services = []
+        extra_data = {}
 
-    #     for extra_location in self.extra_data:
-    #         url = (
-    #             self.config['locations']['ical']['url']
-    #                 .replace('calendar-id', extra_location['calendar_id'])
-    #         )
+        calendar_ids = []
+        for calendar in self.extra_data['calendars']:
+            calendar_id = calendar.get('calendarId')
+            if calendar_id:
+                service_location = {
+                    'concept_title': calendar.get('id'),
+                    'calendar_id': calendar_id,
+                    'merge': calendar.get('merge'),
+                    'parent': calendar.get('parent'),
+                    'tags': calendar.get('tags'),
+                    'type': calendar.get('type')
+                }
 
-    #         response = requests.get(url)
-    #         calendar = Calendar.from_ical(response.text)
+                calendar_ids.append(calendar_id)
+                extra_data[calendar_id] = service_location
 
-    #         for event in calendar.walk():
-    #             if event.name == 'VEVENT':
-    #                 print('-------------')
-    #                 print(event.get('summary'))
-    #                 print(event.get('uid'))
-    #                 print(event.get('dtstart'))
-    #                 print(event.get('dtend'))
-    #                 print(event.get('dtstamp'))
-    #                 print(event.get('sequence'))
+        service_locations_hours_responses = []
+        for calendar_id in calendar_ids:
+            url = (
+                self.config['locations']['ical']['url']
+                    .replace('calendar-id', calendar_id)
+            )
+            service_locations_hours_responses.append(grequests.get(url))
 
-            # for raw_event in calendar.events:
-            #     print(raw_event)
-            #     print('-------')
-            #     event_day = raw_event.begin.format('YYYY-MM-DD')
-                # if event_day in week_events:
-                #     event = {
-                #         'start': raw_event.begin,
-                #         'end': raw_event.end,
+        for calendar_id, response in zip(
+            calendar_ids,
+            grequests.map(service_locations_hours_responses)
+        ):
+            open_hours = self.get_location_open_hours(response)
+            extra_data[calendar_id]['open_hours'] = open_hours
 
-                #     }
+        for _, data in extra_data.items():
+            if 'services' in data['tags']:
+                extra_services.append(data)
+            else:
+                extra_locations.append(data)
 
-                #     week_events[event_day].append(event)
-
-            # if 'services' in extra_location['tags']:
-            #     extra_services.append(extra_location)
-            # else:
-            #     extra_locations.append(extra_location)
-
-        # return extra_locations, extra_services
+        return extra_locations, extra_services
 
 
 if __name__ == '__main__':
@@ -206,4 +204,5 @@ if __name__ == '__main__':
     # locationsGenerator.get_campus_map_locations()
     # locationsGenerator.get_extention_locations()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(locationsGenerator.get_dining_locations())
+    # loop.run_until_complete(locationsGenerator.get_dining_locations())
+    loop.run_until_complete(locationsGenerator.get_extra_data())
