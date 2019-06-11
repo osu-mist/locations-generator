@@ -24,6 +24,7 @@ class LocationsGenerator:
         self.today = datetime.utcnow().date()
         self.config = utils.load_yaml('configuration.yaml')
         self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
+        self.facil_query = utils.load_file('contrib/get_facil_locations.sql')
 
     def get_arcGis_locations(self):
         config = self.config['locations']['arcGisGenderInclusiveRR']
@@ -113,12 +114,11 @@ class LocationsGenerator:
         return parking_locations
 
     def get_facil_locations(self):
-        query = utils.load_file_as_string('contrib/get_facil_locations.sql')
         config = self.config['database']
         connection = connect(config['user'], config['password'], config['url'])
         cursor = connection.cursor()
 
-        cursor.execute(query)
+        cursor.execute(self.facil_query)
 
         col_names = [row[0] for row in cursor.description]
         facil_locations = []

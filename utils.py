@@ -49,9 +49,9 @@ def load_json(file_name):
             sys.exit(f'Unable to parse {file_name}')
 
 
-def load_file_as_string(file_name):
+def load_file(file_name):
     """
-    Helper function for loading file as string
+    Helper function for loading file
     """
     with open(file_name, 'r') as file:
         try:
