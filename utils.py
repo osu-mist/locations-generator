@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import sys
 
@@ -7,7 +8,7 @@ import yaml
 
 def parse_arguments():
     """
-    Handler function for parsing command-line arguments
+    Helper function for parsing command-line arguments
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -24,18 +25,33 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def load_yaml(file):
+def load_yaml(file_name):
     """
-    Handler function for loading config file
+    Helper function for loading YAML file
     """
-    with open(file, 'r') as configuration:
+    with open(file_name, 'r') as file:
         try:
-            return yaml.safe_load(configuration)
+            return yaml.safe_load(file)
         except yaml.YAMLError as error:
             logging.debug(error)
-            sys.exit(f'Unable to parse {file}')
+            sys.exit(f'Unable to parse {file_name}')
+
+
+def load_json(file_name):
+    """
+    Helper function for loading JSON file
+    """
+    with open(file_name, 'r') as file:
+        try:
+            return json.load(file)
+        except json.decoder.JSONDecodeError as error:
+            logging.debug(error)
+            sys.exit(f'Unable to parse {file_name}')
 
 
 def get_calendar_url(calendar_id):
+    """
+    Helper function for generating calendar URL
+    """
     ical_url = load_yaml('configuration.yaml')['locations']['ical']['url']
     return ical_url.replace('calendar-id', calendar_id)
