@@ -110,10 +110,7 @@ class LocationsGenerator:
 
             diners_hours_responses = []
             for calendar_id in calendar_ids:
-                url = (
-                    self.config['locations']['ical']['url']
-                        .replace('calendar-id', calendar_id)
-                )
+                url = utils.get_calendar_url(calendar_id)
                 diners_hours_responses.append(grequests.get(url))
 
             for calendar_id, response in zip(
@@ -124,6 +121,47 @@ class LocationsGenerator:
                 diners_data[calendar_id]['open_hours'] = open_hours
 
             return diners_data
+
+    async def get_extra_data(self):
+        extra_locations = []
+        extra_services = []
+        extra_data = {}
+
+        calendar_ids = []
+        for calendar in self.extra_data['calendars']:
+            calendar_id = calendar.get('calendarId')
+            if calendar_id:
+                service_location = {
+                    'concept_title': calendar.get('id'),
+                    'calendar_id': calendar_id,
+                    'merge': calendar.get('merge'),
+                    'parent': calendar.get('parent'),
+                    'tags': calendar.get('tags'),
+                    'type': calendar.get('type')
+                }
+
+                calendar_ids.append(calendar_id)
+                extra_data[calendar_id] = service_location
+
+        service_locations_hours_responses = []
+        for calendar_id in calendar_ids:
+            url = utils.get_calendar_url(calendar_id)
+            service_locations_hours_responses.append(grequests.get(url))
+
+        for calendar_id, response in zip(
+            calendar_ids,
+            grequests.map(service_locations_hours_responses)
+        ):
+            open_hours = self.get_location_open_hours(response)
+            extra_data[calendar_id]['open_hours'] = open_hours
+
+        for _, data in extra_data.items():
+            if 'services' in data['tags']:
+                extra_services.append(data)
+            else:
+                extra_locations.append(data)
+
+        return extra_locations, extra_services
 
     def get_location_open_hours(self, response):
         open_hours = {}
@@ -152,50 +190,6 @@ class LocationsGenerator:
                         open_hours[event_day].append(event_hours)
 
             return open_hours
-
-    async def get_extra_data(self):
-        extra_locations = []
-        extra_services = []
-        extra_data = {}
-
-        calendar_ids = []
-        for calendar in self.extra_data['calendars']:
-            calendar_id = calendar.get('calendarId')
-            if calendar_id:
-                service_location = {
-                    'concept_title': calendar.get('id'),
-                    'calendar_id': calendar_id,
-                    'merge': calendar.get('merge'),
-                    'parent': calendar.get('parent'),
-                    'tags': calendar.get('tags'),
-                    'type': calendar.get('type')
-                }
-
-                calendar_ids.append(calendar_id)
-                extra_data[calendar_id] = service_location
-
-        service_locations_hours_responses = []
-        for calendar_id in calendar_ids:
-            url = (
-                self.config['locations']['ical']['url']
-                    .replace('calendar-id', calendar_id)
-            )
-            service_locations_hours_responses.append(grequests.get(url))
-
-        for calendar_id, response in zip(
-            calendar_ids,
-            grequests.map(service_locations_hours_responses)
-        ):
-            open_hours = self.get_location_open_hours(response)
-            extra_data[calendar_id]['open_hours'] = open_hours
-
-        for _, data in extra_data.items():
-            if 'services' in data['tags']:
-                extra_services.append(data)
-            else:
-                extra_locations.append(data)
-
-        return extra_locations, extra_services
 
 
 if __name__ == '__main__':

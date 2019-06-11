@@ -34,3 +34,8 @@ def load_yaml(file):
         except yaml.YAMLError as error:
             logging.debug(error)
             sys.exit(f'Unable to parse {file}')
+
+
+def get_calendar_url(calendar_id):
+    ical_url = load_yaml('configuration.yaml')['locations']['ical']['url']
+    return ical_url.replace('calendar-id', calendar_id)
