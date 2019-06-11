@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import logging
 import xml.etree.ElementTree as et
 
+from cx_Oracle import connect
 from icalendar import Calendar
 import grequests
 import requests
@@ -70,7 +71,6 @@ class LocationsGenerator:
         return arcGis_coordinates
 
     def get_parking_locations(self):
-
         def __is_valid_field(field):
             return field and field.strip()
 
@@ -111,6 +111,26 @@ class LocationsGenerator:
                 ignored_parkings.append(properties['OBJECTID'])
 
         return parking_locations
+
+    def get_facil_locations(self):
+        query = utils.load_file_as_string('contrib/get_facil_locations.sql')
+        config = self.config['database']
+        connection = connect(config['user'], config['password'], config['url'])
+        cursor = connection.cursor()
+
+        cursor.execute(query)
+
+        col_names = [row[0] for row in cursor.description]
+        facil_locations = []
+
+        for row in cursor:
+            for index, col_name in enumerate(col_names):
+                facil_location = {
+                    col_name: row[index]
+                }
+            facil_locations.append(facil_location)
+
+        return facil_locations
 
     def get_campus_map_locations(self):
         config = self.config['locations']['campusMap']
@@ -264,7 +284,8 @@ if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
     # locationsGenerator.get_arcGis_locations()
     # locationsGenerator.get_arcGis_coordinates()
-    locationsGenerator.get_parking_locations()
+    # locationsGenerator.get_parking_locations()
+    locationsGenerator.get_facil_locations()
     # locationsGenerator.get_campus_map_locations()
     # locationsGenerator.get_extention_locations()
     # loop = asyncio.get_event_loop()

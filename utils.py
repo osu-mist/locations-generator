@@ -49,6 +49,18 @@ def load_json(file_name):
             sys.exit(f'Unable to parse {file_name}')
 
 
+def load_file_as_string(file_name):
+    """
+    Helper function for loading file as string
+    """
+    with open(file_name, 'r') as file:
+        try:
+            return file.read()
+        except FileNotFoundError as error:
+            logging.debug(error)
+            sys.exit(f'File {file_name} not found')
+
+
 def get_calendar_url(calendar_id):
     """
     Helper function for generating calendar URL
