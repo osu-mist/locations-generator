@@ -29,8 +29,8 @@ class LocationsGenerator:
 
     def get_arcGis_locations(self):
         config = self.config['locations']['arcGis']
-        url = config['url']
-        params = config['params']['genderInclusiveRR']
+        url = f'{config["url"]}{config["GenderInclusiveRR"]["endpoint"]}'
+        params = config['GenderInclusiveRR']['params']
 
         response = requests.get(url, params=params)
         arcGis_data = {}
@@ -51,8 +51,8 @@ class LocationsGenerator:
 
     def get_arcGis_coordinates(self):
         config = self.config['locations']['arcGis']
-        url = config['url']
-        params = config['params']['buildingGeometries']
+        url = f'{config["url"]}{config["buildingGeometries"]["endpoint"]}'
+        params = config['buildingGeometries']['params']
         buildings_coordinates = self.get_converted_coordinates(url, params)
 
         arcGis_coordinates = {}
@@ -80,8 +80,10 @@ class LocationsGenerator:
         def __is_valid_field(field):
             return field and field.strip()
 
-        config = self.config['locations']['coordinates']
-        parkings_coordinates = utils.load_json(config['parkings'])
+        config = self.config['locations']['arcGis']
+        url = f'{config["url"]}{config["parkingGeometries"]["endpoint"]}'
+        params = config['parkingGeometries']['params']
+        parkings_coordinates = self.get_converted_coordinates(url, params)
 
         parking_locations = []
         ignored_parkings = []
@@ -335,8 +337,8 @@ class LocationsGenerator:
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
     # locationsGenerator.get_arcGis_locations()
-    locationsGenerator.get_arcGis_coordinates()
-    # locationsGenerator.get_parking_locations()
+    # locationsGenerator.get_arcGis_coordinates()
+    locationsGenerator.get_parking_locations()
     # locationsGenerator.get_facil_locations()
     # locationsGenerator.get_campus_map_locations()
     # locationsGenerator.get_extention_locations()
