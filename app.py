@@ -4,8 +4,9 @@ import logging
 import xml.etree.ElementTree as et
 
 from cx_Oracle import connect
-from icalendar import Calendar
 import grequests
+from icalendar import Calendar
+from pyproj import Proj
 import requests
 
 import utils
@@ -27,9 +28,11 @@ class LocationsGenerator:
         self.facil_query = utils.load_file('contrib/get_facil_locations.sql')
 
     def get_arcGis_locations(self):
-        config = self.config['locations']['arcGisGenderInclusiveRR']
+        config = self.config['locations']['arcGis']
+        url = config['url']
+        params = config['params']['genderInclusiveRR']
 
-        response = requests.get(config['url'], params=config['params'])
+        response = requests.get(url, params=params)
         arcGis_data = {}
 
         if response.status_code == 200:
@@ -47,8 +50,10 @@ class LocationsGenerator:
         return arcGis_data
 
     def get_arcGis_coordinates(self):
-        config = self.config['locations']['coordinates']
-        buildings_coordinates = utils.load_json(config['buildings'])
+        config = self.config['locations']['arcGis']
+        url = config['url']
+        params = config['params']['buildingGeometries']
+        buildings_coordinates = self.get_converted_coordinates(url, params)
 
         arcGis_coordinates = {}
 
@@ -279,15 +284,63 @@ class LocationsGenerator:
 
             return open_hours
 
+    def get_converted_coordinates(self, url, params):
+        response = requests.get(url, params=params)
+
+        if response.status_code == 200:
+            response_json = response.json()
+            proj = Proj(('+proj=lcc '
+                         '+lat_0=43.66666666666666 '
+                         '+lat_1=46 '
+                         '+lat_2=44.33333333333334 '
+                         '+lon_0=-120.5 '
+                         '+x_0=2500000.0001424 '
+                         '+y_0=0 +ellps=GRS80 '
+                         '+towgs84=0,0,0,0,0,0,0 '
+                         '+units=ft +no_defs'))
+
+            for feature in response_json['features']:
+                geometry = feature['geometry']
+                geometry_type = geometry['type']
+
+                coordinates = []
+                if geometry_type == 'Polygon':
+                    for coordinate in geometry['coordinates']:
+                        pairs = []
+                        for x, y in coordinate:
+                            longitude, latitude = proj(x, y, inverse=True)
+                            pairs.append([longitude, latitude])
+                        coordinates.append(pairs)
+                elif geometry_type == 'MultiPolygon':
+                    polygons = []
+                    for polygon in geometry['coordinates']:
+                        for coordinate in polygon:
+                            pairs = []
+                            for x, y in coordinate:
+                                longitude, latitude = proj(x, y, inverse=True)
+                                pairs.append([longitude, latitude])
+                            polygons.append(pairs)
+                        coordinates.append(polygons)
+                else:
+                    logging.warning((
+                        f'Ignoring unknown geometry type: {geometry_type}. '
+                        f'(id: {feature["id"]})'
+                    ))
+
+                feature['geometry']['coordinates'] = coordinates
+
+        return response_json
+
 
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
     # locationsGenerator.get_arcGis_locations()
-    # locationsGenerator.get_arcGis_coordinates()
+    locationsGenerator.get_arcGis_coordinates()
     # locationsGenerator.get_parking_locations()
-    locationsGenerator.get_facil_locations()
+    # locationsGenerator.get_facil_locations()
     # locationsGenerator.get_campus_map_locations()
     # locationsGenerator.get_extention_locations()
     # loop = asyncio.get_event_loop()
     # loop.run_until_complete(locationsGenerator.get_dining_locations())
     # loop.run_until_complete(locationsGenerator.get_extra_data())
+    # locationsGenerator.get_building_converted_coordinates()
