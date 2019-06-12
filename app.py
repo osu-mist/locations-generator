@@ -27,18 +27,18 @@ class LocationsGenerator:
         self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
         self.facil_query = utils.load_file('contrib/get_facil_locations.sql')
 
-    def get_arcGis_locations(self):
-        config = self.config['locations']['arcGis']
-        url = f'{config["url"]}{config["GenderInclusiveRR"]["endpoint"]}'
-        params = config['GenderInclusiveRR']['params']
+    def get_arcGIS_locations(self):
+        config = self.config['locations']['arcGIS']
+        url = f'{config["url"]}{config["genderInclusiveRR"]["endpoint"]}'
+        params = config['genderInclusiveRR']['params']
 
         response = requests.get(url, params=params)
-        arcGis_data = {}
+        arcGIS_data = {}
 
         if response.status_code == 200:
             for feature in response.json()['features']:
                 attributes = feature['attributes']
-                arcGis_data[attributes['BldID']] = {
+                arcGIS_data[attributes['BldID']] = {
                     'id': attributes['BldID'],
                     'name': attributes['BldNam'],
                     'abbreviation': attributes['BldNamAbr'],
@@ -47,19 +47,19 @@ class LocationsGenerator:
                     'restroom_locations': attributes['LocaAll']
                 }
 
-        return arcGis_data
+        return arcGIS_data
 
-    def get_arcGis_coordinates(self):
-        config = self.config['locations']['arcGis']
+    def get_arcGIS_coordinates(self):
+        config = self.config['locations']['arcGIS']
         url = f'{config["url"]}{config["buildingGeometries"]["endpoint"]}'
         params = config['buildingGeometries']['params']
         buildings_coordinates = self.get_converted_coordinates(url, params)
 
-        arcGis_coordinates = {}
+        arcGIS_coordinates = {}
 
         for feature in buildings_coordinates['features']:
             properties = feature['properties']
-            arcGis_location = {
+            arcGIS_location = {
                 'id': properties['BldID'],
                 'name': properties['BldNam'],
                 'abbreviation': properties['BldNamAbr'],
@@ -69,18 +69,18 @@ class LocationsGenerator:
 
             if feature['geometry']:
                 geometry = feature['geometry']
-                arcGis_location['coordinates'] = geometry['coordinates']
-                arcGis_location['coordinates_type'] = geometry['type']
+                arcGIS_location['coordinates'] = geometry['coordinates']
+                arcGIS_location['coordinates_type'] = geometry['type']
 
-            arcGis_coordinates[properties['BldID']] = arcGis_location
+            arcGIS_coordinates[properties['BldID']] = arcGIS_location
 
-        return arcGis_coordinates
+        return arcGIS_coordinates
 
     def get_parking_locations(self):
         def __is_valid_field(field):
             return field and field.strip()
 
-        config = self.config['locations']['arcGis']
+        config = self.config['locations']['arcGIS']
         url = f'{config["url"]}{config["parkingGeometries"]["endpoint"]}'
         params = config['parkingGeometries']['params']
         parkings_coordinates = self.get_converted_coordinates(url, params)
@@ -335,10 +335,10 @@ class LocationsGenerator:
 
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
-    # locationsGenerator.get_arcGis_locations()
+    locationsGenerator.get_arcGIS_locations()
     # locationsGenerator.get_converted_coordinates()
-    # locationsGenerator.get_arcGis_coordinates()
-    # locationsGenerator.get_parking_locations()
+    locationsGenerator.get_arcGIS_coordinates()
+    locationsGenerator.get_parking_locations()
     # locationsGenerator.get_facil_locations()
     # locationsGenerator.get_campus_map_locations()
     # locationsGenerator.get_extention_locations()
