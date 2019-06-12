@@ -287,6 +287,17 @@ class LocationsGenerator:
             return open_hours
 
     def get_converted_coordinates(self, url, params):
+        def __convert_polygon(polygon):
+            coordinates = []
+            for coordinate in polygon:
+                pairs = []
+                for pair in coordinate:
+                    lon_lat = list(proj(pair[0], pair[1], inverse=True))
+                    pair = lon_lat + pair[2:] if len(pair) >= 2 else lon_lat
+                    pairs.append(pair)
+                coordinates.append(pairs)
+            return coordinates
+
         response = requests.get(url, params=params)
 
         if response.status_code == 200:
@@ -307,22 +318,10 @@ class LocationsGenerator:
 
                 coordinates = []
                 if geometry_type == 'Polygon':
-                    for coordinate in geometry['coordinates']:
-                        pairs = []
-                        for x, y in coordinate:
-                            longitude, latitude = proj(x, y, inverse=True)
-                            pairs.append([longitude, latitude])
-                        coordinates.append(pairs)
+                    coordinates = __convert_polygon(geometry['coordinates'])
                 elif geometry_type == 'MultiPolygon':
-                    polygons = []
                     for polygon in geometry['coordinates']:
-                        for coordinate in polygon:
-                            pairs = []
-                            for x, y in coordinate:
-                                longitude, latitude = proj(x, y, inverse=True)
-                                pairs.append([longitude, latitude])
-                            polygons.append(pairs)
-                        coordinates.append(polygons)
+                        coordinates.append(__convert_polygon(polygon))
                 else:
                     logging.warning((
                         f'Ignoring unknown geometry type: {geometry_type}. '
@@ -337,12 +336,12 @@ class LocationsGenerator:
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
     # locationsGenerator.get_arcGis_locations()
+    # locationsGenerator.get_converted_coordinates()
     # locationsGenerator.get_arcGis_coordinates()
-    locationsGenerator.get_parking_locations()
+    # locationsGenerator.get_parking_locations()
     # locationsGenerator.get_facil_locations()
     # locationsGenerator.get_campus_map_locations()
     # locationsGenerator.get_extention_locations()
     # loop = asyncio.get_event_loop()
     # loop.run_until_complete(locationsGenerator.get_dining_locations())
     # loop.run_until_complete(locationsGenerator.get_extra_data())
-    # locationsGenerator.get_building_converted_coordinates()
