@@ -332,16 +332,35 @@ class LocationsGenerator:
 
         return response_json
 
+    def get_library_hours(self):
+        config = self.config['locations']['library']
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.kiosks.v1'
+        }
+        body = {'dates': []}
+
+        for day in range(7):
+            week_day = self.today + timedelta(days=day)
+            body['dates'].append(week_day.strftime('%Y-%m-%d'))
+
+        response = requests.post(config['url'], headers=headers, json=body)
+
+        if response.status_code == 200:
+            return response.json()
+
 
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
-    locationsGenerator.get_arcGIS_locations()
+    # locationsGenerator.get_arcGIS_locations()
     # locationsGenerator.get_converted_coordinates()
-    locationsGenerator.get_arcGIS_coordinates()
-    locationsGenerator.get_parking_locations()
+    # locationsGenerator.get_arcGIS_coordinates()
+    # locationsGenerator.get_parking_locations()
     # locationsGenerator.get_facil_locations()
     # locationsGenerator.get_campus_map_locations()
     # locationsGenerator.get_extention_locations()
     # loop = asyncio.get_event_loop()
     # loop.run_until_complete(locationsGenerator.get_dining_locations())
     # loop.run_until_complete(locationsGenerator.get_extra_data())
+    locationsGenerator.get_library_hours()
