@@ -13,7 +13,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--config',
-        dest='config_path',
+        dest='config',
         help='Path to yaml formatted config file',
         required=True)
     parser.add_argument(

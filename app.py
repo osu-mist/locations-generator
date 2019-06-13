@@ -23,7 +23,7 @@ class LocationsGenerator:
             logging.basicConfig(level=logging.INFO)
 
         self.today = datetime.utcnow().date()
-        self.config = utils.load_yaml('configuration.yaml')
+        self.config = utils.load_yaml(arguments.config)
         self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
         self.facil_query = utils.load_file('contrib/get_facil_locations.sql')
 
