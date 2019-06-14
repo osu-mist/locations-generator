@@ -1,4 +1,5 @@
 import asyncio
+from collections import defaultdict
 from datetime import datetime, timedelta
 import logging
 import xml.etree.ElementTree as et
@@ -278,9 +279,8 @@ class LocationsGenerator:
         """
         An async function to get extra calendars data
         """
-        extra_locations = []
-        extra_services = []
-        extra_data = {}
+        extra_data = defaultdict(list)
+        data = {}
 
         calendar_ids = []
         for calendar in self.extra_data['calendars']:
@@ -296,7 +296,7 @@ class LocationsGenerator:
                 }
 
                 calendar_ids.append(calendar_id)
-                extra_data[calendar_id] = service_location
+                data[calendar_id] = service_location
 
         # Create a set of unsent asynchronous requests
         service_locations_hours_responses = []
@@ -310,15 +310,15 @@ class LocationsGenerator:
             grequests.map(service_locations_hours_responses)
         ):
             open_hours = self.get_location_open_hours(response)
-            extra_data[calendar_id]['openHours'] = open_hours
+            data[calendar_id]['openHours'] = open_hours
 
-        for _, data in extra_data.items():
-            if 'services' in data['tags']:
-                extra_services.append(data)
+        for _, item in data.items():
+            if 'services' in item['tags']:
+                extra_data['services'].append(item)
             else:
-                extra_locations.append(data)
+                extra_data['locations'].append(item)
 
-        return extra_locations, extra_services
+        return extra_data
 
     def get_location_open_hours(self, response):
         """
@@ -492,20 +492,25 @@ class LocationsGenerator:
 
             locations.append(location)
 
-        locations += self.get_extra_locations()
-
+        # Send async calls and collect results
+        concurrent_calls = asyncio.gather(
+            self.get_dining_locations(),
+            self.get_extra_calendars()
+        )
         loop = asyncio.get_event_loop()
-        locations += loop.run_until_complete(self.get_dining_locations())
+        concurrent_res = loop.run_until_complete(concurrent_calls)
+        loop.close()
+
+        # Concatenate locations
+        locations += self.get_extra_locations()  # extra locations
+        locations += self.get_extention_locations()  # extention locations
+        locations += self.get_parking_locations()  # parking locations
+        locations += concurrent_res[0]  # dining locations
+        locations += concurrent_res[1]['locations']  # extra calendar locations
 
         return locations
 
 
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
-    # locationsGenerator.get_extra_locations()
-    # locationsGenerator.get_campus_map_locations()
-    locationsGenerator.get_extention_locations()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(locationsGenerator.get_dining_locations())
-    # locationsGenerator.get_library_hours()
-    # locationsGenerator.get_combined_data()
+    locationsGenerator.get_combined_data()
