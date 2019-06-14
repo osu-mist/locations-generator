@@ -27,29 +27,27 @@ class LocationsGenerator:
         self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
         self.facil_query = utils.load_file('contrib/get_facil_locations.sql')
 
-    def get_arcGIS_locations(self):
+    def get_gender_inclusive_restrooms(self):
         config = self.config['locations']['arcGIS']
         url = f'{config["url"]}{config["genderInclusiveRR"]["endpoint"]}'
         params = config['genderInclusiveRR']['params']
 
         response = requests.get(url, params=params)
-        arcGIS_data = {}
+        gender_inclusive_restrooms = {}
 
         if response.status_code == 200:
             for feature in response.json()['features']:
                 attributes = feature['attributes']
-                arcGIS_data[attributes['BldID']] = {
-                    'id': attributes['BldID'],
-                    'name': attributes['BldNam'],
-                    'abbreviation': attributes['BldNamAbr'],
-                    'restroom_count': attributes['CntAll'],
-                    'restroom_limit': attributes['Limits'],
-                    'restroom_locations': attributes['LocaAll']
+                gender_inclusive_restrooms[attributes['BldID']] = {
+                    'arcGISAbbreviation': attributes['BldNamAbr'],
+                    'restroomCount': attributes['CntAll'],
+                    'restroomLimit': attributes['Limits'],
+                    'restroomLocations': attributes['LocaAll']
                 }
 
-        return arcGIS_data
+        return gender_inclusive_restrooms
 
-    def get_arcGIS_coordinates(self):
+    def get_arcGIS_geometries(self):
         config = self.config['locations']['arcGIS']
         url = f'{config["url"]}{config["buildingGeometries"]["endpoint"]}'
         params = config['buildingGeometries']['params']
@@ -60,17 +58,17 @@ class LocationsGenerator:
         for feature in buildings_coordinates['features']:
             properties = feature['properties']
             arcGIS_location = {
-                'id': properties['BldID'],
-                'name': properties['BldNam'],
-                'abbreviation': properties['BldNamAbr'],
+                'arcGISAbbreviation': properties['BldNamAbr'],
                 'latitude': properties['Cent_Lat'],
-                'longitude': properties['Cent_Lon']
+                'longitude': properties['Cent_Lon'],
+                'coordinates': None,
+                'coordinatesType': None
             }
 
             if feature['geometry']:
                 geometry = feature['geometry']
                 arcGIS_location['coordinates'] = geometry['coordinates']
-                arcGIS_location['coordinates_type'] = geometry['type']
+                arcGIS_location['coordinatesType'] = geometry['type']
 
             arcGIS_coordinates[properties['BldID']] = arcGIS_location
 
@@ -100,19 +98,21 @@ class LocationsGenerator:
                 parking_location = {
                     'id': f'{prop_id}{parking_zone_group}',
                     'description': properties['AiM_Desc'],
-                    'prop_id': prop_id,
-                    'parking_zone_group': parking_zone_group,
+                    'propId': prop_id,
+                    'parkingZoneGroup': parking_zone_group,
                     'latitude': properties['Cent_Lat'],
                     'longitude': properties['Cent_Lon'],
-                    'ada_parking_space_count': properties['ADA_Spc'],
-                    'ev_parking_spaceCount': properties['EV_Spc'],
-                    'motorcycle_parking_space_count': properties['MCycle_Spc']
+                    'adaParkingSpaceCount': properties['ADA_Spc'],
+                    'evParkingSpaceCount': properties['EV_Spc'],
+                    'motorcycleParkingSpaceCount': properties['MCycle_Spc'],
+                    'coordinates': None,
+                    'coordinatesType': None
                 }
 
                 if feature['geometry']:
                     geometry = feature['geometry']
                     parking_location['coordinates'] = geometry['coordinates']
-                    parking_location['coordinates_type'] = geometry['type']
+                    parking_location['coordinatesType'] = geometry['type']
 
                 parking_locations.append(parking_location)
             else:
@@ -128,14 +128,13 @@ class LocationsGenerator:
         cursor.execute(self.facil_query)
 
         col_names = [row[0] for row in cursor.description]
-        facil_locations = []
+        facil_locations = {}
 
         for row in cursor:
+            facil_location = {}
             for index, col_name in enumerate(col_names):
-                facil_location = {
-                    col_name: row[index]
-                }
-            facil_locations.append(facil_location)
+                facil_location[col_name] = row[index]
+            facil_locations[facil_location['id']] = facil_location
 
         return facil_locations
 
@@ -182,21 +181,24 @@ class LocationsGenerator:
                 calendar_id = raw_diner.get('calendar_id')
                 if raw_diner['calendar_id'] not in diners_data:
                     diner = {
-                        'concept_title': raw_diner.get('concept_title'),
+                        'conceptTitle': raw_diner.get('concept_title'),
                         'zone': raw_diner.get('zone'),
-                        'calendar_id': calendar_id,
+                        'calendarId': calendar_id,
                         'start': raw_diner.get('start'),
                         'end': raw_diner.get('end'),
-                        'type': 'dining'
+                        'type': 'dining',
+                        'latitude': None,
+                        'longitude': None,
+                        'weeklyMenu': None
                     }
 
                     if raw_diner.get('concept_coord'):
-                        coordinates = raw_diner.get('concept_coord').split(',')
+                        coordinates = raw_diner['concept_coord'].split(',')
                         diner['latitude'] = coordinates[0].strip()
                         diner['longitude'] = coordinates[1].strip()
 
-                    if raw_diner['loc_id']:
-                        diner['weekly_menu'] = (
+                    if raw_diner.get('loc_id'):
+                        diner['weeklyMenu'] = (
                             f'{week_menu_url}?loc={raw_diner["loc_id"]}'
                         )
 
@@ -213,7 +215,7 @@ class LocationsGenerator:
                 grequests.map(diners_hours_responses)
             ):
                 open_hours = self.get_location_open_hours(response)
-                diners_data[calendar_id]['open_hours'] = open_hours
+                diners_data[calendar_id]['openHours'] = open_hours
 
             return diners_data
 
@@ -227,8 +229,8 @@ class LocationsGenerator:
             calendar_id = calendar.get('calendarId')
             if calendar_id:
                 service_location = {
-                    'concept_title': calendar.get('id'),
-                    'calendar_id': calendar_id,
+                    'conceptTitle': calendar.get('id'),
+                    'calendarId': calendar_id,
                     'merge': calendar.get('merge'),
                     'parent': calendar.get('parent'),
                     'tags': calendar.get('tags'),
@@ -248,7 +250,7 @@ class LocationsGenerator:
             grequests.map(service_locations_hours_responses)
         ):
             open_hours = self.get_location_open_hours(response)
-            extra_data[calendar_id]['open_hours'] = open_hours
+            extra_data[calendar_id]['openHours'] = open_hours
 
         for _, data in extra_data.items():
             if 'services' in data['tags']:
@@ -279,8 +281,8 @@ class LocationsGenerator:
                             'end': event.get('dtend'),
                             'dtstamp': event.get('dtstamp'),
                             'sequence': event.get('sequence'),
-                            'recurrence_id': event.get('recurrenceId'),
-                            'last_modified': event.get('lastModified')
+                            'recurrenceId': event.get('recurrenceId'),
+                            'lastModified': event.get('lastModified')
                         }
                         open_hours[event_day].append(event_hours)
 
@@ -350,11 +352,67 @@ class LocationsGenerator:
         if response.status_code == 200:
             return response.json()
 
+    def get_combined_data(self):
+        facil_locations = self.get_facil_locations()
+        gender_inclusive_restrooms = self.get_gender_inclusive_restrooms()
+        arcGIS_geometries = self.get_arcGIS_geometries()
+        locations = []
+
+        for location_id, raw_location in facil_locations.items():
+            location = {}
+            address1, address2 = location['address1'], location['address2']
+
+            campus_dict = {
+                'cascadescampus': 'Cascades',
+                'osucampus': 'Corvallis',
+                'hmsc': 'HMSC'
+            }
+            campus = None
+            raw_campus = raw_location['campus'].lower()
+            if raw_campus in campus_dict:
+                campus = campus_dict[raw_campus]
+            elif raw_campus:
+                campus = 'Other'
+
+            location = {
+                'buildingId': raw_location['id'],
+                'bannerAbbreviation': raw_location['bannerAbbreviation'],
+                'name': raw_location['name'],
+                'campus': campus,
+                'address': f'{address1}\n{address2}' if address2 else address1,
+                'city': raw_location['city'],
+                'state': raw_location['state'],
+                'zip': raw_location['zip'],
+                'arcGISAbbreviation': None,
+                'giRestroomCount': 0,
+                'giRestroomLimit': None,
+                'giRestroomLocations': None,
+                'latitude': None,
+                'longitude': None,
+                'coordinates': None,
+                'coordinatesType': None
+            }
+
+            if location_id in gender_inclusive_restrooms:
+                location['arcGISAbbreviation'] = gender_inclusive_restrooms[location_id]['arcGISAbbreviation']
+                location['giRestroomCount'] = gender_inclusive_restrooms[location_id]['restroomCount']
+                location['giRestroomLimit'] = gender_inclusive_restrooms[location_id]['restroomLimit']
+                location['giRestroomLocations'] = gender_inclusive_restrooms[location_id]['restroomLocations'].strip()
+
+            if location_id in arcGIS_geometries:
+                location['arcGISAbbreviation'] = arcGIS_geometries[location_id]['arcGISAbbreviation']
+                location['latitude'] = arcGIS_geometries[location_id]['latitude']
+                location['longitude'] = arcGIS_geometries[location_id]['longitude']
+                location['coordinates'] = arcGIS_geometries[location_id]['coordinates']
+                location['coordinatesType'] = arcGIS_geometries[location_id]['coordinatesType']
+
+            locations.append(location)
+
+        return locations
+
 
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
-    # locationsGenerator.get_arcGIS_locations()
-    # locationsGenerator.get_converted_coordinates()
     # locationsGenerator.get_arcGIS_coordinates()
     # locationsGenerator.get_parking_locations()
     # locationsGenerator.get_facil_locations()
@@ -363,4 +421,5 @@ if __name__ == '__main__':
     # loop = asyncio.get_event_loop()
     # loop.run_until_complete(locationsGenerator.get_dining_locations())
     # loop.run_until_complete(locationsGenerator.get_extra_data())
-    locationsGenerator.get_library_hours()
+    # locationsGenerator.get_library_hours()
+    locationsGenerator.get_combined_data()
