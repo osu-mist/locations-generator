@@ -252,11 +252,31 @@ class LocationsGenerator:
                 open_hours = self.get_location_open_hours(response)
                 diners_data[calendar_id]['openHours'] = open_hours
 
-            return diners_data
+            return list(diners_data.values())
 
-    async def get_extra_data(self):
+    def get_extra_locations(self):
         """
-        An async function to get extra data
+        An async function to get extra location data
+        """
+        extra_locations = []
+
+        for raw_location in self.extra_data['locations']:
+            location = {
+                'name': raw_location.get('name'),
+                'buildingId': raw_location.get('bldgID'),
+                'latitude': raw_location.get('latitude'),
+                'longitude': raw_location.get('longitude'),
+                'campus': raw_location.get('campus'),
+                'type': raw_location.get('type'),
+                'tags': raw_location.get('tags')
+            }
+            extra_locations.append(location)
+
+        return extra_locations
+
+    async def get_extra_calendars(self):
+        """
+        An async function to get extra calendars data
         """
         extra_locations = []
         extra_services = []
@@ -309,21 +329,21 @@ class LocationsGenerator:
         # Only fetch the events within a week
         for day in range(7):
             week_day = self.today + timedelta(days=day)
-            open_hours[week_day.strftime('%Y-%m-%d')] = []
+            open_hours[utils.to_date(week_day)] = []
 
         if response.status_code == 200:
             calendar = Calendar.from_ical(response.text)
 
             for event in calendar.walk():
                 if event.name == 'VEVENT':
-                    event_day = event.get('dtstart').dt.strftime('%Y-%m-%d')
+                    utc_start = utils.to_utc(event.get('dtstart').dt)
+                    event_day = utils.to_date(utc_start)
                     if event_day in open_hours:
                         event_hours = {
-                            'summary': event.get('summary'),
-                            'uid': event.get('uid'),
-                            'start': event.get('dtstart'),
-                            'end': event.get('dtend'),
-                            'dtstamp': event.get('dtstamp'),
+                            'summary': str(event.get('summary')),
+                            'uid': str(event.get('uid')),
+                            'start': utils.to_utc_string(utc_start),
+                            'end': utils.to_utc_string(event.get('dtend').dt),
                             'sequence': event.get('sequence'),
                             'recurrenceId': event.get('recurrenceId'),
                             'lastModified': event.get('lastModified')
@@ -398,7 +418,7 @@ class LocationsGenerator:
 
         for day in range(7):
             week_day = self.today + timedelta(days=day)
-            body['dates'].append(week_day.strftime('%Y-%m-%d'))
+            body['dates'].append(utils.to_date(week_day))
 
         response = requests.post(config['url'], headers=headers, json=body)
 
@@ -472,18 +492,20 @@ class LocationsGenerator:
 
             locations.append(location)
 
+        locations += self.get_extra_locations()
+
+        loop = asyncio.get_event_loop()
+        locations += loop.run_until_complete(self.get_dining_locations())
+
         return locations
 
 
 if __name__ == '__main__':
     locationsGenerator = LocationsGenerator()
-    # locationsGenerator.get_arcGIS_coordinates()
-    # locationsGenerator.get_parking_locations()
-    # locationsGenerator.get_facil_locations()
+    # locationsGenerator.get_extra_locations()
     # locationsGenerator.get_campus_map_locations()
-    # locationsGenerator.get_extention_locations()
-    # loop = asyncio.get_event_loop()
-    # loop.run_until_complete(locationsGenerator.get_dining_locations())
-    # loop.run_until_complete(locationsGenerator.get_extra_data())
+    locationsGenerator.get_extention_locations()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(locationsGenerator.get_dining_locations())
     # locationsGenerator.get_library_hours()
-    locationsGenerator.get_combined_data()
+    # locationsGenerator.get_combined_data()

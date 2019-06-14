@@ -1,4 +1,5 @@
 import argparse
+from datetime import timezone
 import json
 import logging
 import sys
@@ -67,3 +68,24 @@ def get_calendar_url(calendar_id):
     """
     ical_url = load_yaml('configuration.yaml')['locations']['ical']['url']
     return ical_url.replace('calendar-id', calendar_id)
+
+
+def to_utc(datetime):
+    """
+    Helper function to convert the timezone of a datetime object to UTC
+    """
+    return datetime.replace(tzinfo=timezone.utc)
+
+
+def to_date(datetime):
+    """
+    Helper function to stringify a datetime object to date string
+    """
+    return datetime.strftime('%Y-%m-%d')
+
+
+def to_utc_string(datetime):
+    """
+    Helper function to stringify a datetime object to UTC datetime string
+    """
+    return datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
