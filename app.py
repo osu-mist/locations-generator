@@ -28,6 +28,9 @@ class LocationsGenerator:
         self.facil_query = utils.load_file('contrib/get_facil_locations.sql')
 
     def get_gender_inclusive_restrooms(self):
+        """
+        Get gender inclusing restrooms data via arcGIS API
+        """
         config = self.config['locations']['arcGIS']
         url = f'{config["url"]}{config["genderInclusiveRR"]["endpoint"]}'
         params = config['genderInclusiveRR']['params']
@@ -38,16 +41,20 @@ class LocationsGenerator:
         if response.status_code == 200:
             for feature in response.json()['features']:
                 attributes = feature['attributes']
+
                 gender_inclusive_restrooms[attributes['BldID']] = {
-                    'arcGISAbbreviation': attributes['BldNamAbr'],
-                    'restroomCount': attributes['CntAll'],
-                    'restroomLimit': attributes['Limits'],
-                    'restroomLocations': attributes['LocaAll']
+                    'abbreviation': attributes.get('BldNamAbr'),
+                    'count': attributes.get('CntAll'),
+                    'limit': attributes.get('Limits'),
+                    'all': attributes.get('LocaAll')
                 }
 
         return gender_inclusive_restrooms
 
     def get_arcGIS_geometries(self):
+        """
+        Get locations' geometry data via arcGIS API
+        """
         config = self.config['locations']['arcGIS']
         url = f'{config["url"]}{config["buildingGeometries"]["endpoint"]}'
         params = config['buildingGeometries']['params']
@@ -56,26 +63,33 @@ class LocationsGenerator:
         arcGIS_coordinates = {}
 
         for feature in buildings_coordinates['features']:
-            properties = feature['properties']
+            prop = feature['properties']
+
             arcGIS_location = {
-                'arcGISAbbreviation': properties['BldNamAbr'],
-                'latitude': properties['Cent_Lat'],
-                'longitude': properties['Cent_Lon'],
+                'abbreviation': prop.get('BldNamAbr'),
+                'latitude': prop.get('Cent_Lat'),
+                'longitude': prop.get('Cent_Lon'),
                 'coordinates': None,
                 'coordinatesType': None
             }
 
             if feature['geometry']:
                 geometry = feature['geometry']
-                arcGIS_location['coordinates'] = geometry['coordinates']
-                arcGIS_location['coordinatesType'] = geometry['type']
+                arcGIS_location['coordinates'] = geometry.get('coordinates')
+                arcGIS_location['coordinatesType'] = geometry.get('type')
 
-            arcGIS_coordinates[properties['BldID']] = arcGIS_location
+            arcGIS_coordinates[prop['BldID']] = arcGIS_location
 
         return arcGIS_coordinates
 
     def get_parking_locations(self):
+        """
+        Get parking locations via arcGIS API
+        """
         def __is_valid_field(field):
+            """
+            Helper function to check if the field is valid
+            """
             return field and field.strip()
 
         config = self.config['locations']['arcGIS']
@@ -87,40 +101,50 @@ class LocationsGenerator:
         ignored_parkings = []
 
         for feature in parkings_coordinates['features']:
-            properties = feature['properties']
-            prop_id = properties['Prop_ID']
-            parking_zone_group = properties['ZoneGroup']
+            prop = feature['properties']
+            prop_id = prop['Prop_ID']
+            parking_zone_group = prop['ZoneGroup']
 
+            # Only fetch the location if Prop_ID and ZoneGroup are valid
             if (
                 __is_valid_field(prop_id)
                 and __is_valid_field(parking_zone_group)
             ):
-                parking_location = {
+                location = {
                     'id': f'{prop_id}{parking_zone_group}',
-                    'description': properties['AiM_Desc'],
+                    'description': prop.get('AiM_Desc'),
                     'propId': prop_id,
                     'parkingZoneGroup': parking_zone_group,
-                    'latitude': properties['Cent_Lat'],
-                    'longitude': properties['Cent_Lon'],
-                    'adaParkingSpaceCount': properties['ADA_Spc'],
-                    'evParkingSpaceCount': properties['EV_Spc'],
-                    'motorcycleParkingSpaceCount': properties['MCycle_Spc'],
+                    'latitude': prop.get('Cent_Lat'),
+                    'longitude': prop.get('Cent_Lon'),
+                    'adaParkingSpaceCount': prop.get('ADA_Spc'),
+                    'evParkingSpaceCount': prop.get('EV_Spc'),
+                    'motorcycleParkingSpaceCount': prop.get('MCycle_Spc'),
                     'coordinates': None,
                     'coordinatesType': None
                 }
 
                 if feature['geometry']:
                     geometry = feature['geometry']
-                    parking_location['coordinates'] = geometry['coordinates']
-                    parking_location['coordinatesType'] = geometry['type']
+                    location['coordinates'] = geometry.get('coordinates')
+                    location['coordinatesType'] = geometry.get('type')
 
-                parking_locations.append(parking_location)
+                parking_locations.append(location)
             else:
-                ignored_parkings.append(properties['OBJECTID'])
+                ignored_parkings.append(prop['OBJECTID'])
+
+        if ignored_parkings:
+            logging.warning((
+                f'These parking lot OBJECTID\'s were ignored because they '
+                f'don\'t have a valid Prop_ID or ZoneGroup: {ignored_parkings}'
+            ))
 
         return parking_locations
 
     def get_facil_locations(self):
+        """
+        Get facility locations via Banner
+        """
         config = self.config['database']
         connection = connect(config['user'], config['password'], config['url'])
         cursor = connection.cursor()
@@ -139,6 +163,9 @@ class LocationsGenerator:
         return facil_locations
 
     def get_campus_map_locations(self):
+        """
+        Get campus map locations by parsing JSON file
+        """
         config = self.config['locations']['campusMap']
 
         response = requests.get(config['url'])
@@ -151,6 +178,9 @@ class LocationsGenerator:
         return campus_map_data
 
     def get_extention_locations(self):
+        """
+        Get extention locations by paring XML file
+        """
         config = self.config['locations']['extension']
 
         response = requests.get(config['url'])
@@ -168,6 +198,9 @@ class LocationsGenerator:
         return extention_data
 
     async def get_dining_locations(self):
+        """
+        An async function to get dining locations via UHDS
+        """
         config = self.config['locations']['uhds']
         calendar_url = f'{config["url"]}/{config["calendar"]}'
         week_menu_url = f'{config["url"]}/{config["weeklyMenu"]}'
@@ -205,11 +238,13 @@ class LocationsGenerator:
                     calendar_ids.append(calendar_id)
                     diners_data[calendar_id] = diner
 
+            # Create a set of unsent asynchronous requests
             diners_hours_responses = []
             for calendar_id in calendar_ids:
                 url = utils.get_calendar_url(calendar_id)
                 diners_hours_responses.append(grequests.get(url))
 
+            # Send requests all at once
             for calendar_id, response in zip(
                 calendar_ids,
                 grequests.map(diners_hours_responses)
@@ -220,6 +255,9 @@ class LocationsGenerator:
             return diners_data
 
     async def get_extra_data(self):
+        """
+        An async function to get extra data
+        """
         extra_locations = []
         extra_services = []
         extra_data = {}
@@ -240,11 +278,13 @@ class LocationsGenerator:
                 calendar_ids.append(calendar_id)
                 extra_data[calendar_id] = service_location
 
+        # Create a set of unsent asynchronous requests
         service_locations_hours_responses = []
         for calendar_id in calendar_ids:
             url = utils.get_calendar_url(calendar_id)
             service_locations_hours_responses.append(grequests.get(url))
 
+        # Send requests all at once
         for calendar_id, response in zip(
             calendar_ids,
             grequests.map(service_locations_hours_responses)
@@ -261,8 +301,12 @@ class LocationsGenerator:
         return extra_locations, extra_services
 
     def get_location_open_hours(self, response):
+        """
+        Get location open hour by parsing iCalendar files
+        """
         open_hours = {}
 
+        # Only fetch the events within a week
         for day in range(7):
             week_day = self.today + timedelta(days=day)
             open_hours[week_day.strftime('%Y-%m-%d')] = []
@@ -289,7 +333,13 @@ class LocationsGenerator:
             return open_hours
 
     def get_converted_coordinates(self, url, params):
+        """
+        Convert ArcGIS coordinates to latitude and longitude
+        """
         def __convert_polygon(polygon):
+            """
+            Helper function to convert a polygon location
+            """
             coordinates = []
             for coordinate in polygon:
                 pairs = []
@@ -335,6 +385,9 @@ class LocationsGenerator:
         return response_json
 
     def get_library_hours(self):
+        """
+        Get library open hours via library API
+        """
         config = self.config['locations']['library']
 
         headers = {
@@ -353,6 +406,10 @@ class LocationsGenerator:
             return response.json()
 
     def get_combined_data(self):
+        """
+        Merge Banner locations with the data of gender inclusive restrooms and
+        geometries from ArcGIS
+        """
         facil_locations = self.get_facil_locations()
         gender_inclusive_restrooms = self.get_gender_inclusive_restrooms()
         arcGIS_geometries = self.get_arcGIS_geometries()
@@ -360,8 +417,10 @@ class LocationsGenerator:
 
         for location_id, raw_location in facil_locations.items():
             location = {}
-            address1, address2 = location['address1'], location['address2']
+            address1 = raw_location['address1']
+            address2 = raw_location['address2']
 
+            # Prettify campus string
             campus_dict = {
                 'cascadescampus': 'Cascades',
                 'osucampus': 'Corvallis',
@@ -374,9 +433,10 @@ class LocationsGenerator:
             elif raw_campus:
                 campus = 'Other'
 
+            # The definition of merged location
             location = {
                 'buildingId': raw_location['id'],
-                'bannerAbbreviation': raw_location['bannerAbbreviation'],
+                'bannerAbbreviation': raw_location['abbreviation'],
                 'name': raw_location['name'],
                 'campus': campus,
                 'address': f'{address1}\n{address2}' if address2 else address1,
@@ -393,18 +453,22 @@ class LocationsGenerator:
                 'coordinatesType': None
             }
 
+            # Merge gender inclusive restrooms
             if location_id in gender_inclusive_restrooms:
-                location['arcGISAbbreviation'] = gender_inclusive_restrooms[location_id]['arcGISAbbreviation']
-                location['giRestroomCount'] = gender_inclusive_restrooms[location_id]['restroomCount']
-                location['giRestroomLimit'] = gender_inclusive_restrooms[location_id]['restroomLimit']
-                location['giRestroomLocations'] = gender_inclusive_restrooms[location_id]['restroomLocations'].strip()
+                gi_restroom = gender_inclusive_restrooms[location_id]
+                location['arcGISAbbreviation'] = gi_restroom['abbreviation']
+                location['giRestroomCount'] = gi_restroom['count']
+                location['giRestroomLimit'] = gi_restroom['limit']
+                location['giRestroomLocations'] = gi_restroom['all'].strip()
 
+            # Merge ArcGIS geometries
             if location_id in arcGIS_geometries:
-                location['arcGISAbbreviation'] = arcGIS_geometries[location_id]['arcGISAbbreviation']
-                location['latitude'] = arcGIS_geometries[location_id]['latitude']
-                location['longitude'] = arcGIS_geometries[location_id]['longitude']
-                location['coordinates'] = arcGIS_geometries[location_id]['coordinates']
-                location['coordinatesType'] = arcGIS_geometries[location_id]['coordinatesType']
+                geometry = arcGIS_geometries[location_id]
+                location['arcGISAbbreviation'] = geometry['abbreviation']
+                location['latitude'] = geometry['latitude']
+                location['longitude'] = geometry['longitude']
+                location['coordinates'] = geometry['coordinates']
+                location['coordinatesType'] = geometry['coordinatesType']
 
             locations.append(location)
 
