@@ -114,6 +114,7 @@ class LocationsGenerator:
                 location = {
                     'id': f'{prop_id}{parking_zone_group}',
                     'description': prop.get('AiM_Desc'),
+                    'source': 'parking',
                     'propId': prop_id,
                     'parkingZoneGroup': parking_zone_group,
                     'latitude': prop.get('Cent_Lat'),
@@ -178,25 +179,25 @@ class LocationsGenerator:
 
         return campus_map_data
 
-    def get_extention_locations(self):
+    def get_extension_locations(self):
         """
-        Get extention locations by paring XML file
+        Get extension locations by paring XML file
         """
         config = self.config['locations']['extension']
 
         response = requests.get(config['url'])
-        extention_data = []
+        extension_data = []
 
         if response.status_code == 200:
             root = et.fromstring(response.content)
 
             for item in root:
-                item_data = {}
+                item_data = {'source': 'extension'}
                 for attribute in item:
                     item_data[attribute.tag] = attribute.text
-                extention_data.append(item_data)
+                extension_data.append(item_data)
 
-        return extention_data
+        return extension_data
 
     async def get_dining_locations(self):
         """
@@ -220,7 +221,7 @@ class LocationsGenerator:
                         'calendarId': calendar_id,
                         'start': raw_diner.get('start'),
                         'end': raw_diner.get('end'),
-                        'type': 'dining',
+                        'source': 'dining',
                         'latitude': None,
                         'longitude': None,
                         'weeklyMenu': None
@@ -269,7 +270,8 @@ class LocationsGenerator:
                 'longitude': raw_location.get('longitude'),
                 'campus': raw_location.get('campus'),
                 'type': raw_location.get('type'),
-                'tags': raw_location.get('tags')
+                'tags': raw_location.get('tags'),
+                'source': 'extraData'
             }
             extra_locations.append(location)
 
@@ -292,7 +294,8 @@ class LocationsGenerator:
                     'merge': calendar.get('merge'),
                     'parent': calendar.get('parent'),
                     'tags': calendar.get('tags'),
-                    'type': calendar.get('type')
+                    'type': calendar.get('type'),
+                    'source': 'extraData'
                 }
 
                 calendar_ids.append(calendar_id)
@@ -455,6 +458,7 @@ class LocationsGenerator:
 
             # The definition of merged location
             location = {
+                'source': 'building',
                 'buildingId': raw_location['id'],
                 'bannerAbbreviation': raw_location['abbreviation'],
                 'name': raw_location['name'],
@@ -503,10 +507,12 @@ class LocationsGenerator:
 
         # Concatenate locations
         locations += self.get_extra_locations()  # extra locations
-        locations += self.get_extention_locations()  # extention locations
+        locations += self.get_extension_locations()  # extension locations
         locations += self.get_parking_locations()  # parking locations
         locations += concurrent_res[0]  # dining locations
         locations += concurrent_res[1]['locations']  # extra calendar locations
+
+        # TODO: locations mapper implementation
 
         return locations
 
