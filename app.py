@@ -405,20 +405,6 @@ class LocationsGenerator:
         locations += concurrent_res[1]['locations']  # extra service locations
 
         combined_locations = {}
-        # for location_type, location_list in locations.items():
-        #     for location in location_list:
-                # if location_type == 'serviceLocations':
-                #     zone = location['zone']
-                    # attribute = {
-                    #     'geoLocation': utils.create_geo_location(
-                    #         location['latitude'], location['longitude']
-                    #     ),
-                    #     'summary': f'Zone: {zone}' if zone else None,
-                    #     'type': location['type'],
-                    #     'campus': 'Corvallis',
-                    #     'openHours': location['openHours'],
-                    #     'merge': location['merge']
-                    # }
 
         return combined_locations
 

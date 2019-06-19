@@ -105,14 +105,3 @@ def get_md5_hash(string):
     Helper function to return the MD5 hash in hexadecimal format
     """
     return hashlib.md5(string.encode('utf-8')).hexdigest()
-
-
-def create_geo_location(latitude, longitude):
-    """
-    Helper function to generate geo location object
-    """
-    if (latitude and longitude):
-        return {
-            'lat': float(latitude),
-            'lon': float(longitude)
-        }
