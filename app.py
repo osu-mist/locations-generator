@@ -10,6 +10,7 @@ from icalendar import Calendar
 from pyproj import Proj
 import requests
 
+from locations.Location import ServiceLocation
 import utils
 
 
@@ -87,11 +88,6 @@ class LocationsGenerator:
         """
         Get parking locations via arcGIS API
         """
-        def __is_valid_field(field):
-            """
-            Helper function to check if the field is valid
-            """
-            return field and field.strip()
 
         config = self.config['locations']['arcGIS']
         url = f'{config["url"]}{config["parkingGeometries"]["endpoint"]}'
@@ -108,13 +104,12 @@ class LocationsGenerator:
 
             # Only fetch the location if Prop_ID and ZoneGroup are valid
             if (
-                __is_valid_field(prop_id)
-                and __is_valid_field(parking_zone_group)
+                utils.is_valid_field(prop_id)
+                and utils.is_valid_field(parking_zone_group)
             ):
                 location = {
                     'id': f'{prop_id}{parking_zone_group}',
                     'description': prop.get('AiM_Desc'),
-                    'source': 'parking',
                     'propId': prop_id,
                     'parkingZoneGroup': parking_zone_group,
                     'latitude': prop.get('Cent_Lat'),
@@ -192,7 +187,7 @@ class LocationsGenerator:
             root = et.fromstring(response.content)
 
             for item in root:
-                item_data = {'source': 'extension'}
+                item_data = {}
                 for attribute in item:
                     item_data[attribute.tag] = attribute.text
                 extension_data.append(item_data)
@@ -213,30 +208,10 @@ class LocationsGenerator:
         if response.status_code == 200:
             calendar_ids = []
             for raw_diner in response.json():
-                calendar_id = raw_diner.get('calendar_id')
-                if raw_diner['calendar_id'] not in diners_data:
-                    diner = {
-                        'conceptTitle': raw_diner.get('concept_title'),
-                        'zone': raw_diner.get('zone'),
-                        'calendarId': calendar_id,
-                        'start': raw_diner.get('start'),
-                        'end': raw_diner.get('end'),
-                        'source': 'dining',
-                        'latitude': None,
-                        'longitude': None,
-                        'weeklyMenu': None
-                    }
+                diner = ServiceLocation(raw_diner, week_menu_url)
+                calendar_id = diner.get_primary_id()
 
-                    if raw_diner.get('concept_coord'):
-                        coordinates = raw_diner['concept_coord'].split(',')
-                        diner['latitude'] = coordinates[0].strip()
-                        diner['longitude'] = coordinates[1].strip()
-
-                    if raw_diner.get('loc_id'):
-                        diner['weeklyMenu'] = (
-                            f'{week_menu_url}?loc={raw_diner["loc_id"]}'
-                        )
-
+                if calendar_id and calendar_id not in diners_data:
                     calendar_ids.append(calendar_id)
                     diners_data[calendar_id] = diner
 
@@ -252,7 +227,8 @@ class LocationsGenerator:
                 grequests.map(diners_hours_responses)
             ):
                 open_hours = self.get_location_open_hours(response)
-                diners_data[calendar_id]['openHours'] = open_hours
+                diners_data[calendar_id].open_hours = open_hours
+                print(vars(diners_data[calendar_id]))
 
             return list(diners_data.values())
 
@@ -271,7 +247,6 @@ class LocationsGenerator:
                 'campus': raw_location.get('campus'),
                 'type': raw_location.get('type'),
                 'tags': raw_location.get('tags'),
-                'source': 'extraData'
             }
             extra_locations.append(location)
 
@@ -285,19 +260,11 @@ class LocationsGenerator:
         data = {}
 
         calendar_ids = []
-        for calendar in self.extra_data['calendars']:
-            calendar_id = calendar.get('calendarId')
-            if calendar_id:
-                service_location = {
-                    'conceptTitle': calendar.get('id'),
-                    'calendarId': calendar_id,
-                    'merge': calendar.get('merge'),
-                    'parent': calendar.get('parent'),
-                    'tags': calendar.get('tags'),
-                    'type': calendar.get('type'),
-                    'source': 'extraData'
-                }
+        for raw_location in self.extra_data['calendars']:
+            service_location = ServiceLocation(raw_location)
+            calendar_id = service_location.get_primary_id()
 
+            if calendar_id:
                 calendar_ids.append(calendar_id)
                 data[calendar_id] = service_location
 
@@ -313,10 +280,10 @@ class LocationsGenerator:
             grequests.map(service_locations_hours_responses)
         ):
             open_hours = self.get_location_open_hours(response)
-            data[calendar_id]['openHours'] = open_hours
+            data[calendar_id].open_hours = open_hours
 
         for _, item in data.items():
-            if 'services' in item['tags']:
+            if 'services' in item.tags:
                 extra_data['services'].append(item)
             else:
                 extra_data['locations'].append(item)
@@ -436,7 +403,13 @@ class LocationsGenerator:
         facil_locations = self.get_facil_locations()
         gender_inclusive_restrooms = self.get_gender_inclusive_restrooms()
         arcGIS_geometries = self.get_arcGIS_geometries()
-        locations = []
+        locations = {
+            'serviceLocations': [],
+            'extensionLocations': [],
+            'extraLocations': [],
+            'parkingLocations': [],
+            'facilLocations': []
+        }
 
         for location_id, raw_location in facil_locations.items():
             location = {}
@@ -458,7 +431,6 @@ class LocationsGenerator:
 
             # The definition of merged location
             location = {
-                'source': 'building',
                 'buildingId': raw_location['id'],
                 'bannerAbbreviation': raw_location['abbreviation'],
                 'name': raw_location['name'],
@@ -494,7 +466,7 @@ class LocationsGenerator:
                 location['coordinates'] = geometry['coordinates']
                 location['coordinatesType'] = geometry['coordinatesType']
 
-            locations.append(location)
+            locations['facilLocations'].append(location)
 
         # Send async calls and collect results
         concurrent_calls = asyncio.gather(
@@ -506,15 +478,29 @@ class LocationsGenerator:
         loop.close()
 
         # Concatenate locations
-        locations += self.get_extra_locations()  # extra locations
-        locations += self.get_extension_locations()  # extension locations
-        locations += self.get_parking_locations()  # parking locations
-        locations += concurrent_res[0]  # dining locations
-        locations += concurrent_res[1]['locations']  # extra calendar locations
+        locations['extraLocations'] += self.get_extra_locations()
+        locations['extensionLocations'] += self.get_extension_locations()
+        locations['parkingLocations'] += self.get_parking_locations()
+        locations['serviceLocations'] += concurrent_res[0]
+        locations['serviceLocations'] += concurrent_res[1]['locations']
 
-        # TODO: locations mapper implementation
+        combined_locations = {}
+        # for location_type, location_list in locations.items():
+        #     for location in location_list:
+                # if location_type == 'serviceLocations':
+                #     zone = location['zone']
+                    # attribute = {
+                    #     'geoLocation': utils.create_geo_location(
+                    #         location['latitude'], location['longitude']
+                    #     ),
+                    #     'summary': f'Zone: {zone}' if zone else None,
+                    #     'type': location['type'],
+                    #     'campus': 'Corvallis',
+                    #     'openHours': location['openHours'],
+                    #     'merge': location['merge']
+                    # }
 
-        return locations
+        return combined_locations
 
 
 if __name__ == '__main__':

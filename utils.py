@@ -1,9 +1,11 @@
 import argparse
 from datetime import timezone
+import hashlib
 import json
 import logging
 import sys
 
+from pyproj import Proj
 import yaml
 
 
@@ -89,3 +91,28 @@ def to_utc_string(datetime):
     Helper function to stringify a datetime object to UTC datetime string
     """
     return datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def is_valid_field(field):
+    """
+    Helper function to determine if a field is valid or not
+    """
+    return field and field.strip()
+
+
+def get_md5_hash(string):
+    """
+    Helper function to return the MD5 hash in hexadecimal format
+    """
+    return hashlib.md5(string.encode('utf-8')).hexdigest()
+
+
+def create_geo_location(latitude, longitude):
+    """
+    Helper function to generate geo location object
+    """
+    if (latitude and longitude):
+        return {
+            'lat': float(latitude),
+            'lon': float(longitude)
+        }
