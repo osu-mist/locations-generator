@@ -1,13 +1,31 @@
 import re
 
 
+class ExtraLocation:
+    """
+    The location type for extra locations
+    """
+    def __init__(self, raw):
+        self.name = raw.get('name')
+        self.bldg_id = raw.get('bldgID')
+        self.longitude = raw.get('latitude')
+        self.latitude = raw.get('longitude')
+        self.campus = raw.get('campus')
+        self.type = raw.get('type')
+        self.tags = raw.get('tags')
+
+    def get_primary_id(self):
+        return self.bldg_id or self.name
+
+
 class ExtensionLocation:
     """
     The location type for extension locations
     """
     def __init__(self, raw):
         self.guid = raw['GUID']
-
+        self.type = 'building'
+        self.campus = 'Extension'
         self.geo_location = self.__create_geo_location(raw.get('GeoLocation'))
         self.group_name = raw.get('GroupName')
         self.street_address = raw.get('StreetAddress')
@@ -18,8 +36,6 @@ class ExtensionLocation:
         self.tel = raw.get('tel')
         self.county = raw.get('country')
         self.location_url = raw.get('location_url')
-        self.type = 'building'
-        self.campus = 'Extension'
 
     def __create_geo_location(self, geo_location):
         if geo_location:
@@ -33,6 +49,61 @@ class ExtensionLocation:
         return self.guid
 
 
+class FacilLocation:
+    """
+    The location type for facil locations
+    """
+    def __init__(self, raw_facil, raw_gir, raw_geo):
+        """
+        Merge Banner locations with the data of gender inclusive restrooms and
+        geometries from ArcGIS
+        """
+        address1 = raw_facil.get('address1')
+        address2 = raw_facil.get('address2')
+
+        self.bldg_id = raw_facil['id']
+        self.type = 'building'
+        self.abbreviation = raw_facil.get('abbreviation')
+        self.name = raw_facil.get('name')
+        self.campus = self.__get_pretty_campus(raw_facil.get('campus'))
+        self.address = self.__get_address(address1, address2)
+        self.city = raw_facil.get('city')
+        self.state = raw_facil.get('state')
+        self.zip = raw_facil.get('zip')
+        self.latitude = raw_geo['latitude'] if raw_geo else None
+        self.longitude = raw_geo['longitude'] if raw_geo else None
+        self.coordinates = raw_geo['coordinates'] if raw_geo else None
+        self.coordinates_type = raw_geo['coordinatesType'] if raw_geo else None
+        self.gir_count = raw_gir['count'] if raw_gir else 0
+        self.gir_limit = raw_gir['limit'] if raw_gir else None
+        self.gir_locations = raw_gir['all'].strip() if raw_gir else None
+        self.arcGIS_abbreviation = (
+            (raw_geo.get('abbreviation') if raw_geo else None)
+            or (raw_gir.get('abbreviation') if raw_gir else None)
+        )
+
+    def __get_pretty_campus(self, raw_campus):
+        campus_dict = {
+            'cascadescampus': 'Cascades',
+            'osucampus': 'Corvallis',
+            'hmsc': 'HMSC'
+        }
+        campus = None
+        raw_campus = raw_campus.lower()
+        if raw_campus in campus_dict:
+            campus = campus_dict[raw_campus]
+        elif raw_campus:
+            campus = 'Other'
+
+        return campus
+
+    def __get_address(self, address1, address2):
+        return f'{address1}\n{address2}' if address2 else address1
+
+    def get_primary_id(self):
+        return self.bldg_id
+
+
 class ParkingLocation:
     """
     The location type for parking locations
@@ -43,7 +114,6 @@ class ParkingLocation:
 
         self.prop_id = properties['Prop_ID']
         self.parking_zone_group = properties['ZoneGroup']
-
         self.type = 'parking'
         self.description = properties.get('AiM_Desc')
         self.ada_parking_spaceCount = properties.get('ADA_Spc')

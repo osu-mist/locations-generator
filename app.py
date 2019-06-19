@@ -11,7 +11,11 @@ from pyproj import Proj
 import requests
 
 from locations.Locations import (
-    ExtensionLocation, ParkingLocation, ServiceLocation
+    ExtensionLocation,
+    ExtraLocation,
+    FacilLocation,
+    ParkingLocation,
+    ServiceLocation
 )
 import utils
 
@@ -218,21 +222,13 @@ class LocationsGenerator:
 
     def get_extra_locations(self):
         """
-        An async function to get extra location data
+        A function to get extra location data
         """
         extra_locations = []
 
         for raw_location in self.extra_data['locations']:
-            location = {
-                'name': raw_location.get('name'),
-                'buildingId': raw_location.get('bldgID'),
-                'latitude': raw_location.get('latitude'),
-                'longitude': raw_location.get('longitude'),
-                'campus': raw_location.get('campus'),
-                'type': raw_location.get('type'),
-                'tags': raw_location.get('tags'),
-            }
-            extra_locations.append(location)
+            extra_location = ExtraLocation(raw_location)
+            extra_locations.append(extra_location)
 
         return extra_locations
 
@@ -380,77 +376,17 @@ class LocationsGenerator:
             return response.json()
 
     def get_combined_data(self):
-        """
-        Merge Banner locations with the data of gender inclusive restrooms and
-        geometries from ArcGIS
-        """
         facil_locations = self.get_facil_locations()
         gender_inclusive_restrooms = self.get_gender_inclusive_restrooms()
         arcGIS_geometries = self.get_arcGIS_geometries()
-        locations = {
-            'serviceLocations': [],
-            'extensionLocations': [],
-            'extraLocations': [],
-            'parkingLocations': [],
-            'facilLocations': []
-        }
+        locations = []
 
-        for location_id, raw_location in facil_locations.items():
-            location = {}
-            address1 = raw_location['address1']
-            address2 = raw_location['address2']
+        for location_id, raw_facil in facil_locations.items():
+            raw_gir = gender_inclusive_restrooms.get(location_id)
+            raw_geo = arcGIS_geometries.get(location_id)
+            facil_location = FacilLocation(raw_facil, raw_gir, raw_geo)
 
-            # Prettify campus string
-            campus_dict = {
-                'cascadescampus': 'Cascades',
-                'osucampus': 'Corvallis',
-                'hmsc': 'HMSC'
-            }
-            campus = None
-            raw_campus = raw_location['campus'].lower()
-            if raw_campus in campus_dict:
-                campus = campus_dict[raw_campus]
-            elif raw_campus:
-                campus = 'Other'
-
-            # The definition of merged location
-            location = {
-                'buildingId': raw_location['id'],
-                'bannerAbbreviation': raw_location['abbreviation'],
-                'name': raw_location['name'],
-                'campus': campus,
-                'address': f'{address1}\n{address2}' if address2 else address1,
-                'city': raw_location['city'],
-                'state': raw_location['state'],
-                'zip': raw_location['zip'],
-                'arcGISAbbreviation': None,
-                'giRestroomCount': 0,
-                'giRestroomLimit': None,
-                'giRestroomLocations': None,
-                'latitude': None,
-                'longitude': None,
-                'coordinates': None,
-                'coordinatesType': None
-            }
-
-            # Merge gender inclusive restrooms
-            if location_id in gender_inclusive_restrooms:
-                gi_restroom = gender_inclusive_restrooms[location_id]
-                location['arcGISAbbreviation'] = gi_restroom['abbreviation']
-                location['giRestroomCount'] = gi_restroom['count']
-                location['giRestroomLimit'] = gi_restroom['limit']
-                location['giRestroomLocations'] = gi_restroom['all'].strip()
-
-            # Merge ArcGIS geometries
-            if location_id in arcGIS_geometries:
-                geometry = arcGIS_geometries[location_id]
-                location['arcGISAbbreviation'] = geometry['abbreviation']
-                location['latitude'] = geometry['latitude']
-                location['longitude'] = geometry['longitude']
-                location['coordinates'] = geometry['coordinates']
-                location['coordinatesType'] = geometry['coordinatesType']
-
-            locations['facilLocations'].append(location)
+            locations.append(facil_location)
 
         # Send async calls and collect results
         concurrent_calls = asyncio.gather(
@@ -462,11 +398,11 @@ class LocationsGenerator:
         loop.close()
 
         # Concatenate locations
-        locations['extraLocations'] += self.get_extra_locations()
-        locations['extensionLocations'] += self.get_extension_locations()
-        locations['parkingLocations'] += self.get_parking_locations()
-        locations['serviceLocations'] += concurrent_res[0]
-        locations['serviceLocations'] += concurrent_res[1]['locations']
+        locations += self.get_extra_locations()  # extra locations
+        locations += self.get_extension_locations()  # extension locations
+        locations += self.get_parking_locations()  # parking locations
+        locations += concurrent_res[0]  # dining locations
+        locations += concurrent_res[1]['locations']  # extra service locations
 
         combined_locations = {}
         # for location_type, location_list in locations.items():
