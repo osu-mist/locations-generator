@@ -10,7 +10,9 @@ from icalendar import Calendar
 from pyproj import Proj
 import requests
 
-from locations.Location import ServiceLocation
+from locations.Locations import (
+    ExtensionLocation, ParkingLocation, ServiceLocation
+)
 import utils
 
 
@@ -98,37 +100,15 @@ class LocationsGenerator:
         ignored_parkings = []
 
         for feature in parkings_coordinates['features']:
-            prop = feature['properties']
-            prop_id = prop['Prop_ID']
-            parking_zone_group = prop['ZoneGroup']
-
             # Only fetch the location if Prop_ID and ZoneGroup are valid
             if (
-                utils.is_valid_field(prop_id)
-                and utils.is_valid_field(parking_zone_group)
+                utils.is_valid_field(feature['properties']['Prop_ID'])
+                and utils.is_valid_field(feature['properties']['ZoneGroup'])
             ):
-                location = {
-                    'id': f'{prop_id}{parking_zone_group}',
-                    'description': prop.get('AiM_Desc'),
-                    'propId': prop_id,
-                    'parkingZoneGroup': parking_zone_group,
-                    'latitude': prop.get('Cent_Lat'),
-                    'longitude': prop.get('Cent_Lon'),
-                    'adaParkingSpaceCount': prop.get('ADA_Spc'),
-                    'evParkingSpaceCount': prop.get('EV_Spc'),
-                    'motorcycleParkingSpaceCount': prop.get('MCycle_Spc'),
-                    'coordinates': None,
-                    'coordinatesType': None
-                }
-
-                if feature['geometry']:
-                    geometry = feature['geometry']
-                    location['coordinates'] = geometry.get('coordinates')
-                    location['coordinatesType'] = geometry.get('type')
-
-                parking_locations.append(location)
+                parking_location = ParkingLocation(feature)
+                parking_locations.append(parking_location)
             else:
-                ignored_parkings.append(prop['OBJECTID'])
+                ignored_parkings.append(feature['properties']['OBJECTID'])
 
         if ignored_parkings:
             logging.warning((
@@ -187,10 +167,11 @@ class LocationsGenerator:
             root = et.fromstring(response.content)
 
             for item in root:
-                item_data = {}
+                raw_data = {}
                 for attribute in item:
-                    item_data[attribute.tag] = attribute.text
-                extension_data.append(item_data)
+                    raw_data[attribute.tag] = attribute.text
+                extension_location = ExtensionLocation(raw_data)
+                extension_data.append(extension_location)
 
         return extension_data
 
@@ -208,7 +189,11 @@ class LocationsGenerator:
         if response.status_code == 200:
             calendar_ids = []
             for raw_diner in response.json():
-                diner = ServiceLocation(raw_diner, week_menu_url)
+                diner = ServiceLocation(
+                    raw_diner,
+                    location_type='dining',
+                    week_menu_url=week_menu_url
+                )
                 calendar_id = diner.get_primary_id()
 
                 if calendar_id and calendar_id not in diners_data:
@@ -228,7 +213,6 @@ class LocationsGenerator:
             ):
                 open_hours = self.get_location_open_hours(response)
                 diners_data[calendar_id].open_hours = open_hours
-                print(vars(diners_data[calendar_id]))
 
             return list(diners_data.values())
 
