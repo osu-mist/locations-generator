@@ -228,6 +228,7 @@ class LocationsGenerator:
 
         for raw_location in self.extra_data['locations']:
             extra_location = ExtraLocation(raw_location)
+            print(extra_location.get_primary_id())
             extra_locations.append(extra_location)
 
         return extra_locations
@@ -306,7 +307,7 @@ class LocationsGenerator:
         """
         Convert ArcGIS coordinates to latitude and longitude
         """
-        def __convert_polygon(polygon):
+        def _convert_polygon(polygon):
             """
             Helper function to convert a polygon location
             """
@@ -340,10 +341,10 @@ class LocationsGenerator:
 
                 coordinates = []
                 if geometry_type == 'Polygon':
-                    coordinates = __convert_polygon(geometry['coordinates'])
+                    coordinates = _convert_polygon(geometry['coordinates'])
                 elif geometry_type == 'MultiPolygon':
                     for polygon in geometry['coordinates']:
-                        coordinates.append(__convert_polygon(polygon))
+                        coordinates.append(_convert_polygon(polygon))
                 else:
                     logging.warning((
                         f'Ignoring unknown geometry type: {geometry_type}. '

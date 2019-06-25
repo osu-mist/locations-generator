@@ -1,21 +1,110 @@
 import re
 
+from overrides import overrides
 
-class ExtraLocation:
+
+class Location:
+    """
+    Base location type
+    """
+    def __init__(self):
+        # default attributes of a location
+        self.attr = {
+            'name': None,
+            'tags': [],
+            'open_hours': [],
+            'type': None,
+            'parents': None,
+            'location_id': None,
+            'merge': False,
+            'abbreviation': None,
+            'geo_location': None,
+            'geometry': None,
+            'summary': None,
+            'description': None,
+            'description_html': None,
+            'address': None,
+            'city': None,
+            'state': None,
+            'zip': None,
+            'county': None,
+            'telephone': None,
+            'fax': None,
+            'thumbnails': [],
+            'images': [],
+            'departments': [],
+            'website': None,
+            'sqft': None,
+            'calendar': None,
+            'campus': None,
+            'giRestroom_count': None,
+            'giRestroom_limit': None,
+            'giRestroom_locations': None,
+            'synonyms': [],
+            'bldg_id': None,
+            'parking_zone_group': None,
+            'prop_id': None,
+            'ada_parking_space_count': None,
+            'motorcycle_parking_space_count': None,
+            'ev_parking_space_count': None,
+            'weekly_menu': None
+        }
+
+    def get_primary_id(self):
+        """
+        The function to get location's primary ID and needs to be overrode
+        """
+        pass
+
+    def set_attributes(self):
+        """
+        The function to set location's attributes and needs to be overrode
+        """
+        pass
+
+    def _create_geo_location(self, longitude, latitude):
+        """
+        A helper function to generate geo location object
+        """
+        if longitude and latitude:
+            return {
+                'longitude': longitude,
+                'latitude': latitude
+            }
+
+    def build_resource(self):
+        """
+        The function to generate geo location object
+        """
+        pass
+
+
+class ExtraLocation(Location):
     """
     The location type for extra locations
     """
     def __init__(self, raw):
         self.name = raw.get('name')
         self.bldg_id = raw.get('bldgID')
-        self.longitude = raw.get('latitude')
-        self.latitude = raw.get('longitude')
+        self.lon = raw.get('latitude')
+        self.lat = raw.get('longitude')
         self.campus = raw.get('campus')
         self.type = raw.get('type')
         self.tags = raw.get('tags')
 
+    @overrides
     def get_primary_id(self):
         return self.bldg_id or self.name
+
+    @overrides
+    def set_attributes(self):
+        self.attr['name'] = self.name
+        self.attr['bldg_id'] = self.bldg_id
+        self.attr['geo_location'] = self._create_geo_location(
+            self.lon, self.lat
+        )
+        self.attr['type'] = self.type
+        self.attr['campus'] = self.campus
 
 
 class ExtensionLocation:
@@ -26,18 +115,18 @@ class ExtensionLocation:
         self.guid = raw['GUID']
         self.type = 'building'
         self.campus = 'Extension'
-        self.geo_location = self.__create_geo_location(raw.get('GeoLocation'))
+        self.geo_location = self._create_geo_location(raw.get('GeoLocation'))
         self.group_name = raw.get('GroupName')
         self.street_address = raw.get('StreetAddress')
         self.city = raw.get('City')
         self.state = raw.get('State')
-        self.zip_code = raw.get('ZIPCode')
+        self.zip = raw.get('ZIPCode')
         self.fax = raw.get('fax')
-        self.tel = raw.get('tel')
+        self.telephone = raw.get('tel')
         self.county = raw.get('country')
         self.location_url = raw.get('location_url')
 
-    def __create_geo_location(self, geo_location):
+    def _create_geo_location(self, geo_location):
         if geo_location:
             search = re.search(r'-?\d+(\.\d+)?', geo_location)
             return {
@@ -45,8 +134,24 @@ class ExtensionLocation:
                 'latitude': search.group(2)
             }
 
+    @overrides
     def get_primary_id(self):
         return self.guid
+
+    @overrides
+    def set_attributes(self):
+        self.attr['name'] = self.group_name
+        self.attr['geo_location'] = self.geo_location
+        self.attr['address'] = self.street_address
+        self.attr['city'] = self.city
+        self.attr['state'] = self.state
+        self.attr['zip'] = self.zip
+        self.attr['telephone'] = self.telephone
+        self.attr['fax'] = self.fax
+        self.attr['county'] = self.county
+        self.attr['website'] = self.location_url
+        self.attr['type'] = self.type
+        self.attr['campus'] = self.campus
 
 
 class FacilLocation:
@@ -65,13 +170,13 @@ class FacilLocation:
         self.type = 'building'
         self.abbreviation = raw_facil.get('abbreviation')
         self.name = raw_facil.get('name')
-        self.campus = self.__get_pretty_campus(raw_facil.get('campus'))
-        self.address = self.__get_address(address1, address2)
+        self.campus = self._get_pretty_campus(raw_facil.get('campus'))
+        self.address = self._get_address(address1, address2)
         self.city = raw_facil.get('city')
         self.state = raw_facil.get('state')
         self.zip = raw_facil.get('zip')
-        self.latitude = raw_geo['latitude'] if raw_geo else None
-        self.longitude = raw_geo['longitude'] if raw_geo else None
+        self.lat = raw_geo['latitude'] if raw_geo else None
+        self.lon = raw_geo['longitude'] if raw_geo else None
         self.coordinates = raw_geo['coordinates'] if raw_geo else None
         self.coordinates_type = raw_geo['coordinatesType'] if raw_geo else None
         self.gir_count = raw_gir['count'] if raw_gir else 0
@@ -82,7 +187,7 @@ class FacilLocation:
             or (raw_gir.get('abbreviation') if raw_gir else None)
         )
 
-    def __get_pretty_campus(self, raw_campus):
+    def _get_pretty_campus(self, raw_campus):
         campus_dict = {
             'cascadescampus': 'Cascades',
             'osucampus': 'Corvallis',
@@ -97,11 +202,32 @@ class FacilLocation:
 
         return campus
 
-    def __get_address(self, address1, address2):
+    def _get_address(self, address1, address2):
         return f'{address1}\n{address2}' if address2 else address1
 
+    @overrides
     def get_primary_id(self):
         return self.bldg_id
+
+    @overrides
+    def set_attributes(self):
+        self.attr['name'] = self.group_name
+        self.attr['abbreviation'] = self.abbreviation
+        self.attr['geo_location'] = self.geo_location
+        self.attr['geometry'] = {
+            'type': self.coordinates_type,
+            'coordinates': self.coordinates
+        }
+        self.attr['type'] = self.type
+        self.attr['campus'] = self.campus
+        self.attr['address'] = self.street_address
+        self.attr['city'] = self.city
+        self.attr['state'] = self.state
+        self.attr['zip'] = self.zip
+        self.attr['gir_count'] = self.gir_count
+        self.attr['gir_limit'] = self.gir_limit
+        self.attr['gir_locations'] = self.gir_locations
+        self.attr['bldg_id'] = self.bldg_id
 
 
 class ParkingLocation:
@@ -115,17 +241,36 @@ class ParkingLocation:
         self.prop_id = properties['Prop_ID']
         self.parking_zone_group = properties['ZoneGroup']
         self.type = 'parking'
+        self.campus = 'Corvallis'
         self.description = properties.get('AiM_Desc')
-        self.ada_parking_spaceCount = properties.get('ADA_Spc')
-        self.motorcycle_parking_space_count = properties.get('MCycle_Spc')
-        self.ev_parking_space_count = properties.get('EV_Spc')
-        self.latitude = properties.get('Cent_Lat')
-        self.longitude = properties.get('Cent_Lon')
+        self.ada_parking_count = properties.get('ADA_Spc')
+        self.moto_parking_count = properties.get('MCycle_Spc')
+        self.ev_parking_count = properties.get('EV_Spc')
+        self.lat = properties.get('Cent_Lat')
+        self.lon = properties.get('Cent_Lon')
+        self.geo_location = self._create_geo_location(self.lon, self.lat)
         self.coordinates = geometry.get('coordinates') if geometry else None
         self.coordinates_type = geometry.get('type') if geometry else None
 
+    @overrides
     def get_primary_id(self):
         return f'{self.prop_id}{self.parking_zone_group}'
+
+    @overrides
+    def set_attributes(self):
+        self.attr['name'] = self.group_name
+        self.attr['parking_zone_group'] = self.parking_zone_group
+        self.attr['geometry'] = {
+            'type': self.coordinates_type,
+            'coordinates': self.coordinates
+        }
+        self.attr['type'] = self.type
+        self.attr['campus'] = self.campus
+        self.attr['prop_id'] = self.prop_id
+        self.attr['ada_parking_space_count'] = self.ada_parking_count
+        self.attr['motorcycle_parking_space_count'] = self.moto_parking_count
+        self.attr['ev_parking_space_count'] = self.ev_parking_count
+        self.attr['geo_location'] = self.geo_location
 
 
 class ServiceLocation:
@@ -145,10 +290,13 @@ class ServiceLocation:
 
         self.calendar_id = raw.get('calendar_id') or raw['calendarId']
         self.type = location_type
+        self.campus = 'Corvallis'
         self.concept_title = raw.get('concept_title') or raw.get('id')
         self.zone = raw.get('zone')
-        self.latitude = latitude
-        self.longitude = longitude
+        self.summary = f'Zone: {raw.get("zone")}' if raw.get('zone') else ''
+        self.lat = latitude
+        self.lon = longitude
+        self.geo_location = self._create_geo_location(longitude, latitude)
         self.weekly_menu = weekly_menu
         self.start = raw.get('start')
         self.end = raw.get('end')
@@ -157,5 +305,19 @@ class ServiceLocation:
         self.merge = False
         self.open_hours = None
 
+    @overrides
     def get_primary_id(self):
         return self.calendar_id
+
+    @overrides
+    def set_attributes(self):
+        self.attr['name'] = self.concept_title
+        self.attr['geo_location'] = self.geo_location
+        self.attr['summary'] = self.summary
+        self.attr['type'] = self.type
+        self.attr['campus'] = self.campus
+        self.attr['open_hours'] = self.open_hours
+        self.attr['merge'] = self.merge
+        self.attr['tags'] = self.tags
+        self.attr['parent'] = self.parent
+        self.attr['weekly_menu'] = self.weekly_menu
