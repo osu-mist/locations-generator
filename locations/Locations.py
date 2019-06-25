@@ -1,6 +1,9 @@
+import logging
 import re
 
 from overrides import overrides
+
+from utils import get_md5_hash
 
 
 class Location:
@@ -37,9 +40,9 @@ class Location:
             'sqft': None,
             'calendar': None,
             'campus': None,
-            'giRestroom_count': None,
-            'giRestroom_limit': None,
-            'giRestroom_locations': None,
+            'gir_count': None,
+            'gir_limit': None,
+            'gir_locations': None,
             'synonyms': [],
             'bldg_id': None,
             'parking_zone_group': None,
@@ -72,11 +75,31 @@ class Location:
                 'latitude': latitude
             }
 
-    def build_resource(self):
+    def _create_geometry(self, coordinates_type, coordinates):
+        """
+        A helper function to generate geometry object
+        """
+        if coordinates_type and coordinates:
+            return {
+                'type': type,
+                'coordinates': coordinates
+            }
+
+    def build_resource(self, api_base_url):
         """
         The function to generate geo location object
         """
-        pass
+        self.set_attributes()
+        resource_id = get_md5_hash(f'{self.type}{self.get_primary_id()}')
+
+        return {
+            'id': resource_id,
+            'type': 'locations',
+            'attributes': self.attr,
+            'links': {
+                'self': f'{api_base_url}/locations/{resource_id}'
+            }
+        }
 
 
 class ExtraLocation(Location):
@@ -86,11 +109,13 @@ class ExtraLocation(Location):
     def __init__(self, raw):
         self.name = raw.get('name')
         self.bldg_id = raw.get('bldgID')
-        self.lon = raw.get('latitude')
-        self.lat = raw.get('longitude')
         self.campus = raw.get('campus')
         self.type = raw.get('type')
         self.tags = raw.get('tags')
+        self.geo_location = self._create_geo_location(
+            raw.get('latitude'),
+            raw.get('longitude')
+        )
 
     @overrides
     def get_primary_id(self):
@@ -100,9 +125,7 @@ class ExtraLocation(Location):
     def set_attributes(self):
         self.attr['name'] = self.name
         self.attr['bldg_id'] = self.bldg_id
-        self.attr['geo_location'] = self._create_geo_location(
-            self.lon, self.lat
-        )
+        self.attr['geo_location'] = self.geo_location
         self.attr['type'] = self.type
         self.attr['campus'] = self.campus
 
@@ -126,6 +149,7 @@ class ExtensionLocation:
         self.county = raw.get('country')
         self.location_url = raw.get('location_url')
 
+    @overrides
     def _create_geo_location(self, geo_location):
         if geo_location:
             search = re.search(r'-?\d+(\.\d+)?', geo_location)
@@ -175,10 +199,14 @@ class FacilLocation:
         self.city = raw_facil.get('city')
         self.state = raw_facil.get('state')
         self.zip = raw_facil.get('zip')
-        self.lat = raw_geo['latitude'] if raw_geo else None
-        self.lon = raw_geo['longitude'] if raw_geo else None
-        self.coordinates = raw_geo['coordinates'] if raw_geo else None
-        self.coordinates_type = raw_geo['coordinatesType'] if raw_geo else None
+        self.geo_location = self._create_geo_location(
+            raw_geo['longitude'] if raw_geo else None,
+            raw_geo['latitude'] if raw_geo else None
+        )
+        self.geometry = self._create_geometry(
+            raw_geo['coordinatesType'] if raw_geo else None,
+            raw_geo['coordinates'] if raw_geo else None
+        )
         self.gir_count = raw_gir['count'] if raw_gir else 0
         self.gir_limit = raw_gir['limit'] if raw_gir else None
         self.gir_locations = raw_gir['all'].strip() if raw_gir else None
@@ -214,10 +242,7 @@ class FacilLocation:
         self.attr['name'] = self.group_name
         self.attr['abbreviation'] = self.abbreviation
         self.attr['geo_location'] = self.geo_location
-        self.attr['geometry'] = {
-            'type': self.coordinates_type,
-            'coordinates': self.coordinates
-        }
+        self.attr['geometry'] = self.geometry
         self.attr['type'] = self.type
         self.attr['campus'] = self.campus
         self.attr['address'] = self.street_address
@@ -249,8 +274,10 @@ class ParkingLocation:
         self.lat = properties.get('Cent_Lat')
         self.lon = properties.get('Cent_Lon')
         self.geo_location = self._create_geo_location(self.lon, self.lat)
-        self.coordinates = geometry.get('coordinates') if geometry else None
-        self.coordinates_type = geometry.get('type') if geometry else None
+        self.geometry = self._create_geometry(
+            geometry.get('type') if geometry else None,
+            geometry.get('coordinates') if geometry else None
+        )
 
     @overrides
     def get_primary_id(self):
@@ -260,10 +287,7 @@ class ParkingLocation:
     def set_attributes(self):
         self.attr['name'] = self.group_name
         self.attr['parking_zone_group'] = self.parking_zone_group
-        self.attr['geometry'] = {
-            'type': self.coordinates_type,
-            'coordinates': self.coordinates
-        }
+        self.attr['geometry'] = self.geometry
         self.attr['type'] = self.type
         self.attr['campus'] = self.campus
         self.attr['prop_id'] = self.prop_id
