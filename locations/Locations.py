@@ -1,3 +1,4 @@
+import json
 import re
 
 from overrides import overrides
@@ -9,22 +10,25 @@ class Location:
     """
     Base location type
     """
-    def __init__(self):
-        # default attributes of a location
+    def _init_attributes(self):
+        """
+        Default attributes of a location. All fields in attributes should be
+        camelCase since it will be used to generate a JSON resource object.
+        """
         self.attr = {
             'name': None,
             'tags': [],
-            'open_hours': [],
+            'openHours': [],
             'type': None,
-            'parents': None,
-            'location_id': None,
+            'parent': None,
+            'locationId': None,
             'merge': False,
             'abbreviation': None,
-            'geo_location': None,
+            'geoLocation': None,
             'geometry': None,
             'summary': None,
             'description': None,
-            'description_html': None,
+            'descriptionHtml': None,
             'address': None,
             'city': None,
             'state': None,
@@ -39,17 +43,17 @@ class Location:
             'sqft': None,
             'calendar': None,
             'campus': None,
-            'gir_count': None,
-            'gir_limit': None,
-            'gir_locations': None,
+            'girCount': None,
+            'girLimit': None,
+            'girLocations': None,
             'synonyms': [],
-            'bldg_id': None,
-            'parking_zone_group': None,
-            'prop_id': None,
-            'ada_parking_space_count': None,
-            'motorcycle_parking_space_count': None,
-            'ev_parking_space_count': None,
-            'weekly_menu': None
+            'bldgId': None,
+            'parkingZoneGroup': None,
+            'propId': None,
+            'adaParkingSpaceCount': None,
+            'motorcycleParkingSpaceCount': None,
+            'evParkingSpaceCount': None,
+            'weeklyMenu': None
         }
 
     def get_primary_id(self):
@@ -58,15 +62,24 @@ class Location:
         """
         pass
 
-    def set_attributes(self):
+    def _set_attributes(self):
         """
         The function to set location's attributes and needs to be overrode
         """
         pass
 
+    def _update_attributes(self, key, value):
+        """
+        The helper function update attribute value
+        """
+        if key not in self.attr:
+            raise KeyError(f'{key} is not defined in location attributes.')
+        else:
+            self.attr[key] = value
+
     def _create_geo_location(self, longitude, latitude):
         """
-        A helper function to generate geo location object
+        The helper function to generate geo location object
         """
         if longitude and latitude:
             return {
@@ -76,22 +89,22 @@ class Location:
 
     def _create_geometry(self, coordinates_type, coordinates):
         """
-        A helper function to generate geometry object
+        The helper function to generate geometry object
         """
         if coordinates_type and coordinates:
             return {
-                'type': type,
+                'type': coordinates_type,
                 'coordinates': coordinates
             }
 
-    def build_resource(self, api_base_url):
+    def build_json_resource(self, api_base_url):
         """
         The function to generate geo location object
         """
-        self.set_attributes()
+        self._set_attributes()
         resource_id = get_md5_hash(f'{self.type}{self.get_primary_id()}')
 
-        return {
+        resource = {
             'id': resource_id,
             'type': 'locations',
             'attributes': self.attr,
@@ -99,6 +112,7 @@ class Location:
                 'self': f'{api_base_url}/locations/{resource_id}'
             }
         }
+        return json.dumps(resource)
 
 
 class ExtraLocation(Location):
@@ -115,21 +129,27 @@ class ExtraLocation(Location):
             raw.get('latitude'),
             raw.get('longitude')
         )
+        self._init_attributes()
 
     @overrides
     def get_primary_id(self):
         return self.bldg_id or self.name
 
     @overrides
-    def set_attributes(self):
-        self.attr['name'] = self.name
-        self.attr['bldg_id'] = self.bldg_id
-        self.attr['geo_location'] = self.geo_location
-        self.attr['type'] = self.type
-        self.attr['campus'] = self.campus
+    def _set_attributes(self):
+        attributes = {
+            'name': self.name,
+            'bldgId': self.bldg_id,
+            'geoLocation': self.geo_location,
+            'type': self.type,
+            'campus': self.campus
+        }
+
+        for key, value in attributes.items():
+            self._update_attributes(key, value)
 
 
-class ExtensionLocation:
+class ExtensionLocation(Location):
     """
     The location type for extension locations
     """
@@ -147,6 +167,7 @@ class ExtensionLocation:
         self.telephone = raw.get('tel')
         self.county = raw.get('country')
         self.location_url = raw.get('location_url')
+        self._init_attributes()
 
     @overrides
     def _create_geo_location(self, geo_location):
@@ -162,22 +183,27 @@ class ExtensionLocation:
         return self.guid
 
     @overrides
-    def set_attributes(self):
-        self.attr['name'] = self.group_name
-        self.attr['geo_location'] = self.geo_location
-        self.attr['address'] = self.street_address
-        self.attr['city'] = self.city
-        self.attr['state'] = self.state
-        self.attr['zip'] = self.zip
-        self.attr['telephone'] = self.telephone
-        self.attr['fax'] = self.fax
-        self.attr['county'] = self.county
-        self.attr['website'] = self.location_url
-        self.attr['type'] = self.type
-        self.attr['campus'] = self.campus
+    def _set_attributes(self):
+        attributes = {
+            'name': self.group_name,
+            'geoLocation': self.geo_location,
+            'address': self.street_address,
+            'city': self.city,
+            'state': self.state,
+            'zip': self.zip,
+            'telephone': self.telephone,
+            'fax': self.fax,
+            'county': self.county,
+            'website': self.location_url,
+            'type': self.type,
+            'campus': self.campus
+        }
+
+        for key, value in attributes.items():
+            self._update_attributes(key, value)
 
 
-class FacilLocation:
+class FacilLocation(Location):
     """
     The location type for facil locations
     """
@@ -213,6 +239,7 @@ class FacilLocation:
             (raw_geo.get('abbreviation') if raw_geo else None)
             or (raw_gir.get('abbreviation') if raw_gir else None)
         )
+        self._init_attributes()
 
     def _get_pretty_campus(self, raw_campus):
         campus_dict = {
@@ -237,24 +264,29 @@ class FacilLocation:
         return self.bldg_id
 
     @overrides
-    def set_attributes(self):
-        self.attr['name'] = self.group_name
-        self.attr['abbreviation'] = self.abbreviation
-        self.attr['geo_location'] = self.geo_location
-        self.attr['geometry'] = self.geometry
-        self.attr['type'] = self.type
-        self.attr['campus'] = self.campus
-        self.attr['address'] = self.street_address
-        self.attr['city'] = self.city
-        self.attr['state'] = self.state
-        self.attr['zip'] = self.zip
-        self.attr['gir_count'] = self.gir_count
-        self.attr['gir_limit'] = self.gir_limit
-        self.attr['gir_locations'] = self.gir_locations
-        self.attr['bldg_id'] = self.bldg_id
+    def _set_attributes(self):
+        attributes = {
+            'name': self.name,
+            'abbreviation': self.abbreviation,
+            'geoLocation': self.geo_location,
+            'geometry': self.geometry,
+            'type': self.type,
+            'campus': self.campus,
+            'address': self.address,
+            'city': self.city,
+            'state': self.state,
+            'zip': self.zip,
+            'girCount': self.gir_count,
+            'girLimit': self.gir_limit,
+            'girLocations': self.gir_locations,
+            'bldgId': self.bldg_id
+        }
+
+        for key, value in attributes.items():
+            self._update_attributes(key, value)
 
 
-class ParkingLocation:
+class ParkingLocation(Location):
     """
     The location type for parking locations
     """
@@ -277,26 +309,32 @@ class ParkingLocation:
             geometry.get('type') if geometry else None,
             geometry.get('coordinates') if geometry else None
         )
+        self._init_attributes()
 
     @overrides
     def get_primary_id(self):
         return f'{self.prop_id}{self.parking_zone_group}'
 
     @overrides
-    def set_attributes(self):
-        self.attr['name'] = self.group_name
-        self.attr['parking_zone_group'] = self.parking_zone_group
-        self.attr['geometry'] = self.geometry
-        self.attr['type'] = self.type
-        self.attr['campus'] = self.campus
-        self.attr['prop_id'] = self.prop_id
-        self.attr['ada_parking_space_count'] = self.ada_parking_count
-        self.attr['motorcycle_parking_space_count'] = self.moto_parking_count
-        self.attr['ev_parking_space_count'] = self.ev_parking_count
-        self.attr['geo_location'] = self.geo_location
+    def _set_attributes(self):
+        attributes = {
+            'name': self.description,
+            'parkingZoneGroup': self.parking_zone_group,
+            'geometry': self.geometry,
+            'type': self.type,
+            'campus': self.campus,
+            'propId': self.prop_id,
+            'adaParkingSpaceCount': self.ada_parking_count,
+            'motorcycleParkingSpaceCount': self.moto_parking_count,
+            'evParkingSpaceCount': self.ev_parking_count,
+            'geoLocation': self.geo_location
+        }
+
+        for key, value in attributes.items():
+            self._update_attributes(key, value)
 
 
-class ServiceLocation:
+class ServiceLocation(Location):
     """
     The location type for dining locations and the locations from extra data
     """
@@ -327,20 +365,26 @@ class ServiceLocation:
         self.parent = raw.get('parent')
         self.merge = False
         self.open_hours = None
+        self._init_attributes()
 
     @overrides
     def get_primary_id(self):
         return self.calendar_id
 
     @overrides
-    def set_attributes(self):
-        self.attr['name'] = self.concept_title
-        self.attr['geo_location'] = self.geo_location
-        self.attr['summary'] = self.summary
-        self.attr['type'] = self.type
-        self.attr['campus'] = self.campus
-        self.attr['open_hours'] = self.open_hours
-        self.attr['merge'] = self.merge
-        self.attr['tags'] = self.tags
-        self.attr['parent'] = self.parent
-        self.attr['weekly_menu'] = self.weekly_menu
+    def _set_attributes(self):
+        attributes = {
+            'name': self.concept_title,
+            'geoLocation': self.geo_location,
+            'summary': self.summary,
+            'type': self.type,
+            'campus': self.campus,
+            'openHours': self.open_hours,
+            'merge': self.merge,
+            'tags': self.tags,
+            'parent': self.parent,
+            'weeklyMenu': self.weekly_menu
+        }
+
+        for key, value in attributes.items():
+            self._update_attributes(key, value)

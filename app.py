@@ -228,7 +228,6 @@ class LocationsGenerator:
 
         for raw_location in self.extra_data['locations']:
             extra_location = ExtraLocation(raw_location)
-            print(extra_location.get_primary_id())
             extra_locations.append(extra_location)
 
         return extra_locations
@@ -309,7 +308,7 @@ class LocationsGenerator:
         """
         def _convert_polygon(polygon):
             """
-            Helper function to convert a polygon location
+            The helper function to convert a polygon location
             """
             coordinates = []
             for coordinate in polygon:
@@ -377,6 +376,7 @@ class LocationsGenerator:
             return response.json()
 
     def get_combined_data(self):
+        base_url = self.config['locations_api']['url']
         facil_locations = self.get_facil_locations()
         gender_inclusive_restrooms = self.get_gender_inclusive_restrooms()
         arcGIS_geometries = self.get_arcGIS_geometries()
@@ -405,7 +405,9 @@ class LocationsGenerator:
         locations += concurrent_res[0]  # dining locations
         locations += concurrent_res[1]['locations']  # extra service locations
 
-        combined_locations = {}
+        combined_locations = []
+        for location in locations:
+            combined_locations.append(location.build_json_resource(base_url))
 
         return combined_locations
 
