@@ -264,6 +264,7 @@ class LocationsGenerator:
 
         for _, item in data.items():
             if 'services' in item.tags:
+                item.type = 'services'
                 extra_data['services'].append(item)
             else:
                 extra_data['locations'].append(item)
@@ -429,6 +430,7 @@ class LocationsGenerator:
         locations += concurrent_res[0]  # dining locations
         locations += concurrent_res[1]['locations']  # extra service locations
 
+        extra_services = concurrent_res[1]['services']
         campus_map_data = self.get_campus_map_data()
         combined_locations = []
         merge_data = []
@@ -473,13 +475,24 @@ class LocationsGenerator:
                     for key, value in attributes.items():
                         orig.update_attributes(key, value)
 
+        # Append service relationships to each location
+        for service in extra_services:
+            for orig in combined_locations:
+                if (
+                    orig.attr['bldgId'] == service.attr['parent']
+                    and not service.attr['merge']
+                ):
+                    orig.relationships['services']['data'].append({
+                        'id': service.calculate_hash_id(),
+                        'type': service.type
+                    })
+
         # Convert location to JSON object
         json_combined_locations = []
         for location in combined_locations:
             json_location = location.build_json_resource(base_url)
             json_combined_locations.append(json_location)
 
-        print(json_combined_locations)
         return json_combined_locations
 
 

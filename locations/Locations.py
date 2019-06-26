@@ -115,7 +115,8 @@ class Location:
             'attributes': self.attr,
             'links': {
                 'self': f'{api_base_url}/locations/{resource_id}'
-            }
+            },
+            'relationships': self.relationships
         }
         return json.dumps(resource)
 
@@ -134,6 +135,7 @@ class ExtraLocation(Location):
             raw.get('latitude'),
             raw.get('longitude')
         )
+        self.relationships = {'services': {'data': []}}
 
         self._set_attributes()
 
@@ -175,6 +177,7 @@ class ExtensionLocation(Location):
         self.telephone = raw.get('tel')
         self.county = raw.get('country')
         self.location_url = raw.get('location_url')
+        self.relationships = {'services': {'data': []}}
 
         self._set_attributes()
 
@@ -250,6 +253,7 @@ class FacilLocation(Location):
             (raw_geo.get('abbreviation') if raw_geo else None)
             or (raw_gir.get('abbreviation') if raw_gir else None)
         )
+        self.relationships = {'services': {'data': []}}
 
         self._set_attributes()
 
@@ -323,6 +327,7 @@ class ParkingLocation(Location):
             geometry.get('type') if geometry else None,
             geometry.get('coordinates') if geometry else None
         )
+        self.relationships = {'services': {'data': []}}
 
         self._set_attributes()
 
@@ -382,6 +387,7 @@ class ServiceLocation(Location):
         self.parent = raw.get('parent')
         self.merge = True if raw.get('merge') else False
         self.open_hours = None
+        self.relationships = {'services': {'data': []}}
 
         self._set_attributes()
 
@@ -393,18 +399,28 @@ class ServiceLocation(Location):
     def _set_attributes(self):
         self._init_attributes()
 
-        attributes = {
-            'name': self.concept_title,
-            'geoLocation': self.geo_location,
-            'summary': self.summary,
-            'type': self.type,
-            'campus': self.campus,
-            'openHours': self.open_hours,
-            'merge': self.merge,
-            'tags': self.tags,
-            'parent': self.parent,
-            'weeklyMenu': self.weekly_menu
-        }
+        if self.type == 'services':
+            attributes = {
+                'name': self.concept_title,
+                'type': self.type,
+                'openHours': self.open_hours,
+                'merge': self.merge,
+                'tags': self.tags,
+                'parent': self.parent
+            }
+        else:
+            attributes = {
+                'name': self.concept_title,
+                'geoLocation': self.geo_location,
+                'summary': self.summary,
+                'type': self.type,
+                'campus': self.campus,
+                'openHours': self.open_hours,
+                'merge': self.merge,
+                'tags': self.tags,
+                'parent': self.parent,
+                'weeklyMenu': self.weekly_menu
+            }
 
         for key, value in attributes.items():
             self.update_attributes(key, value)
