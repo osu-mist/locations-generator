@@ -143,9 +143,9 @@ class LocationsGenerator:
 
         return facil_locations
 
-    def get_campus_map_locations(self):
+    def get_campus_map_data(self):
         """
-        Get campus map locations by parsing JSON file
+        Get campus map data by parsing JSON file
         """
         config = self.config['locations']['campusMap']
 
@@ -405,13 +405,32 @@ class LocationsGenerator:
         locations += concurrent_res[0]  # dining locations
         locations += concurrent_res[1]['locations']  # extra service locations
 
+        campus_map_data = self.get_campus_map_data()
         combined_locations = []
+
         for location in locations:
+            resource_id = location.calculate_hash_id()
+
+            if resource_id in campus_map_data:
+                campus_recourse = campus_map_data[resource_id]
+                attributes = {
+                    'address': campus_recourse['address'],
+                    'description': campus_recourse['description'],
+                    'descriptionHtml': campus_recourse['descriptionHTML'],
+                    'images': campus_recourse['images'],
+                    'thumbnails': campus_recourse['thumbnail'],
+                    'website': campus_recourse['mapUrl'],
+                    'synonyms': campus_recourse['synonyms']
+                }
+                for key, value in attributes.items():
+                    location.update_attributes(key, value)
+                print(location.build_json_resource(base_url))
+
             combined_locations.append(location.build_json_resource(base_url))
 
         return combined_locations
 
 
 if __name__ == '__main__':
-    locationsGenerator = LocationsGenerator()
-    locationsGenerator.get_combined_data()
+    locations_generator = LocationsGenerator()
+    locations_generator.get_combined_data()

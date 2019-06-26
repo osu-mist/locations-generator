@@ -68,7 +68,7 @@ class Location:
         """
         pass
 
-    def _update_attributes(self, key, value):
+    def update_attributes(self, key, value):
         """
         The helper function update attribute value
         """
@@ -97,12 +97,18 @@ class Location:
                 'coordinates': coordinates
             }
 
+    def calculate_hash_id(self):
+        """
+        The function to calculate location's hash ID
+        """
+        return get_md5_hash(f'{self.type}{self.get_primary_id()}')
+
     def build_json_resource(self, api_base_url):
         """
-        The function to generate geo location object
+        The function to generate geo location object in JSON format
         """
         self._set_attributes()
-        resource_id = get_md5_hash(f'{self.type}{self.get_primary_id()}')
+        resource_id = self.calculate_hash_id()
 
         resource = {
             'id': resource_id,
@@ -146,7 +152,7 @@ class ExtraLocation(Location):
         }
 
         for key, value in attributes.items():
-            self._update_attributes(key, value)
+            self.update_attributes(key, value)
 
 
 class ExtensionLocation(Location):
@@ -200,7 +206,7 @@ class ExtensionLocation(Location):
         }
 
         for key, value in attributes.items():
-            self._update_attributes(key, value)
+            self.update_attributes(key, value)
 
 
 class FacilLocation(Location):
@@ -283,7 +289,7 @@ class FacilLocation(Location):
         }
 
         for key, value in attributes.items():
-            self._update_attributes(key, value)
+            self.update_attributes(key, value)
 
 
 class ParkingLocation(Location):
@@ -331,7 +337,7 @@ class ParkingLocation(Location):
         }
 
         for key, value in attributes.items():
-            self._update_attributes(key, value)
+            self.update_attributes(key, value)
 
 
 class ServiceLocation(Location):
@@ -387,4 +393,4 @@ class ServiceLocation(Location):
         }
 
         for key, value in attributes.items():
-            self._update_attributes(key, value)
+            self.update_attributes(key, value)
