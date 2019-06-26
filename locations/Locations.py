@@ -107,7 +107,6 @@ class Location:
         """
         The function to generate geo location object in JSON format
         """
-        self._set_attributes()
         resource_id = self.calculate_hash_id()
 
         resource = {
@@ -135,7 +134,8 @@ class ExtraLocation(Location):
             raw.get('latitude'),
             raw.get('longitude')
         )
-        self._init_attributes()
+
+        self._set_attributes()
 
     @overrides
     def get_primary_id(self):
@@ -143,6 +143,8 @@ class ExtraLocation(Location):
 
     @overrides
     def _set_attributes(self):
+        self._init_attributes()
+
         attributes = {
             'name': self.name,
             'bldgId': self.bldg_id,
@@ -173,7 +175,8 @@ class ExtensionLocation(Location):
         self.telephone = raw.get('tel')
         self.county = raw.get('country')
         self.location_url = raw.get('location_url')
-        self._init_attributes()
+
+        self._set_attributes()
 
     @overrides
     def _create_geo_location(self, geo_location):
@@ -190,6 +193,8 @@ class ExtensionLocation(Location):
 
     @overrides
     def _set_attributes(self):
+        self._init_attributes()
+
         attributes = {
             'name': self.group_name,
             'geoLocation': self.geo_location,
@@ -245,7 +250,8 @@ class FacilLocation(Location):
             (raw_geo.get('abbreviation') if raw_geo else None)
             or (raw_gir.get('abbreviation') if raw_gir else None)
         )
-        self._init_attributes()
+
+        self._set_attributes()
 
     def _get_pretty_campus(self, raw_campus):
         campus_dict = {
@@ -271,6 +277,8 @@ class FacilLocation(Location):
 
     @overrides
     def _set_attributes(self):
+        self._init_attributes()
+
         attributes = {
             'name': self.name,
             'abbreviation': self.abbreviation,
@@ -315,7 +323,8 @@ class ParkingLocation(Location):
             geometry.get('type') if geometry else None,
             geometry.get('coordinates') if geometry else None
         )
-        self._init_attributes()
+
+        self._set_attributes()
 
     @overrides
     def get_primary_id(self):
@@ -323,6 +332,8 @@ class ParkingLocation(Location):
 
     @overrides
     def _set_attributes(self):
+        self._init_attributes()
+
         attributes = {
             'name': self.description,
             'parkingZoneGroup': self.parking_zone_group,
@@ -369,9 +380,10 @@ class ServiceLocation(Location):
         self.end = raw.get('end')
         self.tags = raw.get('tags')
         self.parent = raw.get('parent')
-        self.merge = False
+        self.merge = True if raw.get('merge') else False
         self.open_hours = None
-        self._init_attributes()
+
+        self._set_attributes()
 
     @overrides
     def get_primary_id(self):
@@ -379,6 +391,8 @@ class ServiceLocation(Location):
 
     @overrides
     def _set_attributes(self):
+        self._init_attributes()
+
         attributes = {
             'name': self.concept_title,
             'geoLocation': self.geo_location,

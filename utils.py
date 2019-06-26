@@ -72,6 +72,16 @@ def get_calendar_url(calendar_id):
     return ical_url.replace('calendar-id', calendar_id)
 
 
+def format_library_hour(string):
+    """
+    Helper function to format the open hours of the library
+    """
+    string = string.strip()
+
+    # e.g. 7:00am -> 07:00am
+    return '0' + string if len(string) <= 7 else string
+
+
 def to_utc(datetime):
     """
     Helper function to convert the timezone of a datetime object to UTC

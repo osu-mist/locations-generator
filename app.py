@@ -299,7 +299,6 @@ class LocationsGenerator:
                             'lastModified': event.get('lastModified')
                         }
                         open_hours[event_day].append(event_hours)
-
             return open_hours
 
     def get_converted_coordinates(self, url, params):
@@ -373,7 +372,31 @@ class LocationsGenerator:
         response = requests.post(config['url'], headers=headers, json=body)
 
         if response.status_code == 200:
-            return response.json()
+            open_hours = {}
+
+            for day in range(7):
+                week_day = self.today + timedelta(days=day)
+                open_hours[utils.to_date(week_day)] = []
+
+            for key, value in response.json().items():
+                datetime_format = '%Y-%m-%d %I:%M%p'
+                date = value['sortable_date']
+                begin = utils.format_library_hour(value['open'])
+                close = utils.format_library_hour(value['close'])
+
+                start = datetime.strptime(f'{date} {begin}', datetime_format)
+                end = datetime.strptime(f'{date} {close}', datetime_format)
+
+                open_hours[date] = {
+                    'summary': None,
+                    'uid': None,
+                    'start': utils.to_utc_string(start),
+                    'end': utils.to_utc_string(end),
+                    'sequence': None,
+                    'recurrenceId': None,
+                    'lastModified': None
+                }
+            return open_hours
 
     def get_combined_data(self):
         base_url = self.config['locations_api']['url']
@@ -382,6 +405,7 @@ class LocationsGenerator:
         arcGIS_geometries = self.get_arcGIS_geometries()
         locations = []
 
+        # Merge facil locations, gender inclusive restrooms and geometry data
         for location_id, raw_facil in facil_locations.items():
             raw_gir = gender_inclusive_restrooms.get(location_id)
             raw_geo = arcGIS_geometries.get(location_id)
@@ -407,10 +431,11 @@ class LocationsGenerator:
 
         campus_map_data = self.get_campus_map_data()
         combined_locations = []
-
+        merge_data = []
         for location in locations:
             resource_id = location.calculate_hash_id()
 
+            # Merge with campus map data
             if resource_id in campus_map_data:
                 campus_recourse = campus_map_data[resource_id]
                 attributes = {
@@ -422,13 +447,40 @@ class LocationsGenerator:
                     'website': campus_recourse['mapUrl'],
                     'synonyms': campus_recourse['synonyms']
                 }
+                if location.attr['bldgId'] == '0036':
+                    open_hours = self.get_library_hours()
+                    attributes['openHours'] = open_hours
+
                 for key, value in attributes.items():
                     location.update_attributes(key, value)
-                print(location.build_json_resource(base_url))
 
-            combined_locations.append(location.build_json_resource(base_url))
+            if location.attr['merge']:
+                merge_data.append(location)
+            else:
+                combined_locations.append(location)
 
-        return combined_locations
+        # Merge data with the original locations
+        for merge in merge_data:
+            for orig in combined_locations:
+                if (
+                    orig.attr['bldgId'] == merge.attr['name']
+                    and not orig.attr['merge']
+                ):
+                    attributes = {
+                        'openHours': merge.attr['openHours'],
+                        'tags': orig.attr['tags'] + merge.attr['tags']
+                    }
+                    for key, value in attributes.items():
+                        orig.update_attributes(key, value)
+
+        # Convert location to JSON object
+        json_combined_locations = []
+        for location in combined_locations:
+            json_location = location.build_json_resource(base_url)
+            json_combined_locations.append(json_location)
+
+        print(json_combined_locations)
+        return json_combined_locations
 
 
 if __name__ == '__main__':
