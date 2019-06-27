@@ -4,5 +4,6 @@ venv/
 
 coordinates/
 build/
+bin/
 
 configuration.yaml

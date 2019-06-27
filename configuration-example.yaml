@@ -1,0 +1,93 @@
+output:
+  path: build
+  locations: locations-combined.json
+  services: services.json
+locations_api:
+  url: http://example.com
+locations:
+  arcGIS:
+    url: http://example.com
+    genderInclusiveRR:
+      endpoint: /genderInclusiveRR/query
+      params:
+        where: BldNamAbr >''
+        geometryType: esriGeometryEnvelope
+        spatialRel: esriSpatialRelIntersects
+        resultType: none
+        distance: 0.0
+        units: esriSRUnit_Meter
+        returnGeodetic: false
+        outFields: '*'
+        returnGeometry: true
+        returnCentroid: false
+        multipatchOption: xyFootprint
+        returnIdsOnly: false
+        returnCountOnly: false
+        returnExtentOnly: false
+        returnDistinctValues: false
+        returnZ: false
+        returnM: false
+        sqlFormat: none
+        f: pjson
+    buildingGeometries:
+      endpoint: /buildingGeometries/query
+      params:
+        where: 1=1
+        geometryType: esriGeometryEnvelope
+        spatialRel: esriSpatialRelIntersects
+        resultType: none
+        distance: 0.0
+        units: esriSRUnit_Meter
+        returnGeodetic: true
+        outFields: '*'
+        returnGeometry: true
+        returnCentroid: true
+        multipatchOption: xyFootprint
+        returnIdsOnly: false
+        returnCountOnly: false
+        returnExtentOnly: false
+        returnDistinctValues: false
+        returnZ: false
+        returnM: false
+        sqlFormat: none
+        f: pgeojson
+    parkingGeometries:
+      endpoint: /parkingGeometries/query
+      params:
+        where: 1=1
+        geometryType: esriGeometryEnvelope
+        spatialRel: esriSpatialRelIntersects
+        resultType: none
+        distance: 0.0
+        units: esriSRUnit_Meter
+        returnGeodetic: false
+        outFields: '*'
+        returnGeometry: true
+        returnCentroid: true
+        multipatchOption: xyFootprint
+        returnIdsOnly: false
+        returnCountOnly: false
+        returnExtentOnly: false
+        returnDistinctValues: false
+        returnZ: false
+        returnM: false
+        returnExceededLimitFeatures: true
+        sqlFormat: none
+        f: pgeojson
+  campusMap:
+    url: http://example.com
+  extension:
+    url: http://example.com
+  ical:
+    url: http://example.com
+  library:
+    url: http://example.com
+  uhds:
+    url: http://example.com
+    calendar: calendar/index
+    weeklyMenu: weeklymenu/index
+
+database:
+  url: example_url
+  user: user
+  password: password
