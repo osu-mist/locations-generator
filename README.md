@@ -10,13 +10,20 @@ The Python script to generate locations data for the [Locations API](https://git
 
 ## Usage
 
-1. Install dependencies via pip:
+1. Fetch contrib files with `git-submodule`:
+
+  ```shell
+  $ git submodule update --init
+  ```
+
+
+2. Install dependencies via pip:
 
   ```shell
   $ pip install -r requirements.txt
   ```
 
-2. Run the integration test:
+3. Run the integration test:
 
   $ python app.py --config=configuration.yaml
   ```
