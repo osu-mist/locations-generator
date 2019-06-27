@@ -263,9 +263,6 @@ class FacilLocation(Location):
         self.relationships = {'services': {'data': []}}
         self.merge = False
 
-        if raw_geo:
-            self.geo_location
-
         self._set_attributes()
 
     def _get_pretty_campus(self, raw_campus):
