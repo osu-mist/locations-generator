@@ -176,6 +176,7 @@ class ExtensionLocation(Location):
         self.location_url = raw.get('location_url')
         self.relationships = {'services': {'data': []}}
         self.merge = False
+        self.bldg_id = None
 
     @overrides
     def _create_geo_location(self, geo_location):
@@ -234,6 +235,7 @@ class FacilLocation(Location):
         self._init_attributes()
         self.bldg_id = raw_facil['id']
         self.type = 'building'
+        self.tags = []
         self.abbreviation = raw_facil.get('abbreviation')
         self.name = raw_facil.get('name')
         self.campus = self._get_pretty_campus(raw_facil.get('campus'))
@@ -258,6 +260,13 @@ class FacilLocation(Location):
         )
         self.relationships = {'services': {'data': []}}
         self.merge = False
+        self.open_hours = {}
+        self.description = None
+        self.descriptionHtml = None
+        self.images = None
+        self.thumbnails = []
+        self.website = None
+        self.synonyms = None
 
     def _get_pretty_campus(self, raw_campus):
         campus_dict = {
@@ -297,7 +306,14 @@ class FacilLocation(Location):
             'girCount': self.gir_count,
             'girLimit': self.gir_limit,
             'girLocations': self.gir_locations,
-            'bldgId': self.bldg_id
+            'bldgId': self.bldg_id,
+            'openHours': self.open_hours,
+            'description': self.description,
+            'descriptionHtml': self.descriptionHtml,
+            'images': self.images,
+            'thumbnails': self.thumbnails,
+            'website': self.website,
+            'synonyms': self.synonyms
         }
 
         for key, value in attributes.items():
@@ -330,6 +346,7 @@ class ParkingLocation(Location):
         )
         self.relationships = {'services': {'data': []}}
         self.merge = False
+        self.bldg_id = None
 
     @overrides
     def get_primary_id(self):
@@ -387,6 +404,7 @@ class ServiceLocation(Location):
         self.merge = True if raw.get('merge') else False
         self.open_hours = None
         self.relationships = {'services': {'data': []}}
+        self.bldg_id = None
 
     @overrides
     def get_primary_id(self):

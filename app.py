@@ -452,21 +452,16 @@ class LocationsGenerator:
             # Merge with campus map data
             if resource_id in campus_map_data:
                 campus_recourse = campus_map_data[resource_id]
-                attributes = {
-                    'address': campus_recourse['address'],
-                    'description': campus_recourse['description'],
-                    'descriptionHtml': campus_recourse['descriptionHTML'],
-                    'images': campus_recourse['images'],
-                    'thumbnails': campus_recourse['thumbnail'],
-                    'website': campus_recourse['mapUrl'],
-                    'synonyms': campus_recourse['synonyms']
-                }
-                if location.bldg_id == '0036':
-                    open_hours = self.get_library_hours()
-                    attributes['openHours'] = open_hours
+                location.address = campus_recourse['address']
+                location.description = campus_recourse['description']
+                location.descriptionHtml = campus_recourse['descriptionHTML']
+                location.images = campus_recourse['images']
+                location.thumbnails = campus_recourse['thumbnail']
+                location.website = campus_recourse['mapUrl']
+                location.synonyms = campus_recourse['synonyms']
 
-                for key, value in attributes.items():
-                    location.update_attributes(key, value)
+                if location.bldg_id == '0036':
+                    location.open_hours = self.get_library_hours()
 
             if location.merge:
                 merge_data.append(location)
@@ -477,21 +472,17 @@ class LocationsGenerator:
         for data in merge_data:
             for orig in combined_locations:
                 if (
-                    orig.attr['bldgId'] == data.attr['name']
+                    orig.bldg_id == data.concept_title
                     and not orig.merge
                 ):
-                    attributes = {
-                        'openHours': data.attr['openHours'],
-                        'tags': orig.attr['tags'] + data.attr['tags']
-                    }
-                    for key, value in attributes.items():
-                        orig.update_attributes(key, value)
+                    self.open_hours = data.open_hours
+                    self.tags = orig.tags + data.tags
 
         # Append service relationships to each location
         for service in extra_services:
             for orig in combined_locations:
                 if (
-                    orig.attr['bldgId'] == service.attr['parent']
+                    orig.bldg_id == service.parent
                     and not service.merge
                 ):
                     orig.relationships['services']['data'].append({
