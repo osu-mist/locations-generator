@@ -12,16 +12,16 @@ The Python script to generate locations data for the [Locations API](https://git
 
 1. Fetch contrib files with `git-submodule`:
 
-  ```shell
-  $ git submodule update --init
-  ```
+    ```shell
+    $ git submodule update --init
+    ```
 
 
 2. Install dependencies via pip:
 
-  ```shell
-  $ pip install -r requirements.txt
-  ```
+    ```shell
+    $ pip install -r requirements.txt
+    ```
 
 3. Run the integration test:
 
@@ -32,14 +32,14 @@ The Python script to generate locations data for the [Locations API](https://git
 
 1. Build the docker image:
 
-  ```shell
-  $ docker build -t locations-generator .
-  ```
+    ```shell
+    $ docker build -t locations-generator .
+    ```
 
 2. Run the app in a container:
 
-  ```shell
-  $ docker run -v "$PWD"/configuration.yaml:/usr/src/app/configuration.yaml:ro \
-               -v "$PWD"/build:/usr/src/app/build \
-               locations-generator
-  ```
+    ```shell
+    $ docker run -v "$PWD"/configuration.yaml:/usr/src/app/configuration.yaml:ro \
+                -v "$PWD"/build:/usr/src/app/build \
+                locations-generator
+    ```
