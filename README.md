@@ -26,7 +26,7 @@ The Python script to generate locations data for the [Locations API](https://git
 3. Run the integration test:
 
     ```shell
-      $ python app.py --config=configuration.yaml
+    $ python app.py --config=configuration.yaml
     ```
 
 ## Docker
