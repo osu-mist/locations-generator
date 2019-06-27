@@ -252,7 +252,13 @@ class LocationsGenerator:
 
         calendar_ids = []
         for raw_location in self.extra_data['calendars']:
-            service_location = ServiceLocation(raw_location)
+            if 'services' in raw_location['tags']:
+                service_location = ServiceLocation(
+                    raw_location,
+                    location_type='services'
+                )
+            else:
+                service_location = ServiceLocation(raw_location)
             calendar_id = service_location.get_primary_id()
 
             if calendar_id:
@@ -274,8 +280,7 @@ class LocationsGenerator:
             data[calendar_id].open_hours = open_hours
 
         for _, item in data.items():
-            if 'services' in item.tags:
-                item.type = 'services'
+            if item.type == 'services':
                 extra_data['services'].append(item)
             else:
                 extra_data['locations'].append(item)
@@ -401,9 +406,9 @@ class LocationsGenerator:
                 }
             return open_hours
 
-    def generate_combined_locations(self):
+    def generate_json_resources(self):
         """
-        Generate combined locations and write to JSON file
+        Generate resources and write to JSON files
         """
         base_url = self.config['locations_api']['url']
         facil_locations = self.get_facil_locations()
@@ -500,14 +505,26 @@ class LocationsGenerator:
             resource = location.build_resource(base_url)
             combined_recourses.append(resource)
 
-        # Write data to output file
+        # Write location data to output file
         output = self.config['output']
-        output_file = f'{output["path"]}/{output["locations"]}'
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        with open(output_file, 'w+') as file:
+        locations_output = f'{output["path"]}/{output["locations"]}'
+        os.makedirs(os.path.dirname(locations_output), exist_ok=True)
+        with open(locations_output, 'w+') as file:
             json.dump(combined_recourses, file)
+
+        # Build service resources
+        services = []
+        for service in concurrent_res[1]['services']:
+            resource = service.build_resource(base_url)
+            services.append(resource)
+
+        # Write services data to output file
+        services_output = f'{output["path"]}/{output["services"]}'
+        os.makedirs(os.path.dirname(services_output), exist_ok=True)
+        with open(services_output, 'w+') as file:
+            json.dump(services, file)
 
 
 if __name__ == '__main__':
     locations_generator = LocationsGenerator()
-    locations_generator.generate_combined_locations()
+    locations_generator.generate_json_resources()

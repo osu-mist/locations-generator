@@ -109,7 +109,7 @@ class Location:
 
         return {
             'id': resource_id,
-            'type': 'locations',
+            'type': 'services' if self.type == 'services' else 'locations',
             'attributes': self.attr,
             'links': {
                 'self': f'{api_base_url}/locations/{resource_id}'
@@ -409,7 +409,13 @@ class ServiceLocation(Location):
         self._init_attributes()
 
         if self.type == 'services':
-            attributes = {
+            self.relationships = {'location': {'data': [
+                {
+                    'id': get_md5_hash(f'building{self.parent}'),
+                    'type': 'locations'
+                }
+            ]}}
+            self.attr = {
                 'name': self.concept_title,
                 'type': self.type,
                 'openHours': self.open_hours,
@@ -429,5 +435,5 @@ class ServiceLocation(Location):
                 'weeklyMenu': self.weekly_menu
             }
 
-        for key, value in attributes.items():
-            self.update_attributes(key, value)
+            for key, value in attributes.items():
+                self.update_attributes(key, value)
