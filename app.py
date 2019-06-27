@@ -461,7 +461,7 @@ class LocationsGenerator:
                     'website': campus_recourse['mapUrl'],
                     'synonyms': campus_recourse['synonyms']
                 }
-                if location.attr['bldgId'] == '0036':
+                if location.bldg_id == '0036':
                     open_hours = self.get_library_hours()
                     attributes['openHours'] = open_hours
 
@@ -514,7 +514,7 @@ class LocationsGenerator:
 
         # Build service resources
         services = []
-        for service in concurrent_res[1]['services']:
+        for service in extra_services:
             resource = service.build_resource(base_url)
             services.append(resource)
 

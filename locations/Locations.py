@@ -105,6 +105,7 @@ class Location:
         """
         The function to build location resource
         """
+        self._set_attributes()
         resource_id = self.calculate_hash_id()
 
         return {
@@ -123,6 +124,7 @@ class ExtraLocation(Location):
     The location type for extra locations
     """
     def __init__(self, raw):
+        self._init_attributes()
         self.name = raw.get('name')
         self.bldg_id = raw.get('bldgID')
         self.campus = raw.get('campus')
@@ -135,16 +137,12 @@ class ExtraLocation(Location):
         self.relationships = {'services': {'data': []}}
         self.merge = False
 
-        self._set_attributes()
-
     @overrides
     def get_primary_id(self):
         return self.bldg_id or self.name
 
     @overrides
     def _set_attributes(self):
-        self._init_attributes()
-
         attributes = {
             'name': self.name,
             'bldgId': self.bldg_id,
@@ -162,6 +160,7 @@ class ExtensionLocation(Location):
     The location type for extension locations
     """
     def __init__(self, raw):
+        self._init_attributes()
         self.guid = raw['GUID']
         self.type = 'building'
         self.campus = 'Extension'
@@ -178,8 +177,6 @@ class ExtensionLocation(Location):
         self.relationships = {'services': {'data': []}}
         self.merge = False
 
-        self._set_attributes()
-
     @overrides
     def _create_geo_location(self, geo_location):
         if geo_location:
@@ -195,8 +192,6 @@ class ExtensionLocation(Location):
 
     @overrides
     def _set_attributes(self):
-        self._init_attributes()
-
         attributes = {
             'name': self.group_name,
             'geoLocation': self.geo_location,
@@ -236,6 +231,7 @@ class FacilLocation(Location):
                 inverse=True
             )
 
+        self._init_attributes()
         self.bldg_id = raw_facil['id']
         self.type = 'building'
         self.abbreviation = raw_facil.get('abbreviation')
@@ -263,8 +259,6 @@ class FacilLocation(Location):
         self.relationships = {'services': {'data': []}}
         self.merge = False
 
-        self._set_attributes()
-
     def _get_pretty_campus(self, raw_campus):
         campus_dict = {
             'cascadescampus': 'Cascades',
@@ -289,8 +283,6 @@ class FacilLocation(Location):
 
     @overrides
     def _set_attributes(self):
-        self._init_attributes()
-
         attributes = {
             'name': self.name,
             'abbreviation': self.abbreviation,
@@ -320,6 +312,7 @@ class ParkingLocation(Location):
         properties = raw['properties']
         geometry = raw.get('geometry')
 
+        self._init_attributes()
         self.prop_id = properties['Prop_ID']
         self.parking_zone_group = properties['ZoneGroup']
         self.type = 'parking'
@@ -338,16 +331,12 @@ class ParkingLocation(Location):
         self.relationships = {'services': {'data': []}}
         self.merge = False
 
-        self._set_attributes()
-
     @overrides
     def get_primary_id(self):
         return f'{self.prop_id}{self.parking_zone_group}'
 
     @overrides
     def _set_attributes(self):
-        self._init_attributes()
-
         attributes = {
             'name': self.description,
             'parkingZoneGroup': self.parking_zone_group,
@@ -380,6 +369,7 @@ class ServiceLocation(Location):
         if raw.get('loc_id'):
             weekly_menu = f'{week_menu_url}?loc={raw["loc_id"]}'
 
+        self._init_attributes()
         self.calendar_id = raw.get('calendar_id') or raw['calendarId']
         self.type = location_type
         self.campus = 'Corvallis'
@@ -398,16 +388,12 @@ class ServiceLocation(Location):
         self.open_hours = None
         self.relationships = {'services': {'data': []}}
 
-        self._set_attributes()
-
     @overrides
     def get_primary_id(self):
         return self.calendar_id
 
     @overrides
     def _set_attributes(self):
-        self._init_attributes()
-
         if self.type == 'services':
             self.relationships = {'location': {'data': [
                 {
