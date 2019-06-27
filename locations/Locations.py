@@ -1,4 +1,3 @@
-import json
 import re
 
 from overrides import overrides
@@ -18,11 +17,10 @@ class Location:
         self.attr = {
             'name': None,
             'tags': [],
-            'openHours': [],
+            'openHours': {},
             'type': None,
             'parent': None,
             'locationId': None,
-            'merge': False,
             'abbreviation': None,
             'geoLocation': None,
             'geometry': None,
@@ -44,7 +42,7 @@ class Location:
             'calendar': None,
             'campus': None,
             'girCount': None,
-            'girLimit': None,
+            'girLimit': False,
             'girLocations': None,
             'synonyms': [],
             'bldgId': None,
@@ -103,13 +101,13 @@ class Location:
         """
         return get_md5_hash(f'{self.type}{self.get_primary_id()}')
 
-    def build_json_resource(self, api_base_url):
+    def build_resource(self, api_base_url):
         """
-        The function to generate geo location object in JSON format
+        The function to build location resource
         """
         resource_id = self.calculate_hash_id()
 
-        resource = {
+        return {
             'id': resource_id,
             'type': 'locations',
             'attributes': self.attr,
@@ -118,7 +116,6 @@ class Location:
             },
             'relationships': self.relationships
         }
-        return json.dumps(resource)
 
 
 class ExtraLocation(Location):
@@ -136,6 +133,7 @@ class ExtraLocation(Location):
             raw.get('longitude')
         )
         self.relationships = {'services': {'data': []}}
+        self.merge = False
 
         self._set_attributes()
 
@@ -178,6 +176,7 @@ class ExtensionLocation(Location):
         self.county = raw.get('country')
         self.location_url = raw.get('location_url')
         self.relationships = {'services': {'data': []}}
+        self.merge = False
 
         self._set_attributes()
 
@@ -221,13 +220,21 @@ class FacilLocation(Location):
     """
     The location type for facil locations
     """
-    def __init__(self, raw_facil, raw_gir, raw_geo):
+    def __init__(self, raw_facil, raw_gir, raw_geo, proj):
         """
         Merge Banner locations with the data of gender inclusive restrooms and
         geometries from ArcGIS
         """
         address1 = raw_facil.get('address1')
         address2 = raw_facil.get('address2')
+
+        lon_lat = None
+        if raw_geo:
+            lon_lat = proj(
+                raw_geo['longitude'],
+                raw_geo['latitude'],
+                inverse=True
+            )
 
         self.bldg_id = raw_facil['id']
         self.type = 'building'
@@ -239,21 +246,25 @@ class FacilLocation(Location):
         self.state = raw_facil.get('state')
         self.zip = raw_facil.get('zip')
         self.geo_location = self._create_geo_location(
-            raw_geo['longitude'] if raw_geo else None,
-            raw_geo['latitude'] if raw_geo else None
+            lon_lat[0] if lon_lat else None,
+            lon_lat[1] if lon_lat else None
         )
         self.geometry = self._create_geometry(
             raw_geo['coordinatesType'] if raw_geo else None,
             raw_geo['coordinates'] if raw_geo else None
         )
         self.gir_count = raw_gir['count'] if raw_gir else 0
-        self.gir_limit = raw_gir['limit'] if raw_gir else None
+        self.gir_limit = bool(raw_gir['limit'].strip()) if raw_gir else None
         self.gir_locations = raw_gir['all'].strip() if raw_gir else None
         self.arcGIS_abbreviation = (
             (raw_geo.get('abbreviation') if raw_geo else None)
             or (raw_gir.get('abbreviation') if raw_gir else None)
         )
         self.relationships = {'services': {'data': []}}
+        self.merge = False
+
+        if raw_geo:
+            self.geo_location
 
         self._set_attributes()
 
@@ -328,6 +339,7 @@ class ParkingLocation(Location):
             geometry.get('coordinates') if geometry else None
         )
         self.relationships = {'services': {'data': []}}
+        self.merge = False
 
         self._set_attributes()
 
@@ -404,7 +416,6 @@ class ServiceLocation(Location):
                 'name': self.concept_title,
                 'type': self.type,
                 'openHours': self.open_hours,
-                'merge': self.merge,
                 'tags': self.tags,
                 'parent': self.parent
             }
@@ -416,7 +427,6 @@ class ServiceLocation(Location):
                 'type': self.type,
                 'campus': self.campus,
                 'openHours': self.open_hours,
-                'merge': self.merge,
                 'tags': self.tags,
                 'parent': self.parent,
                 'weeklyMenu': self.weekly_menu

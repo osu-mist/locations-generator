@@ -5,7 +5,6 @@ import json
 import logging
 import sys
 
-from pyproj import Proj
 import yaml
 
 

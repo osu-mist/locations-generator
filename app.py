@@ -1,7 +1,9 @@
 import asyncio
 from collections import defaultdict
 from datetime import datetime, timedelta
+import json
 import logging
+import os
 import xml.etree.ElementTree as et
 
 from cx_Oracle import connect
@@ -34,6 +36,15 @@ class LocationsGenerator:
         self.config = utils.load_yaml(arguments.config)
         self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
         self.facil_query = utils.load_file('contrib/get_facil_locations.sql')
+        self.proj = Proj(('+proj=lcc '
+                          '+lat_0=43.66666666666666 '
+                          '+lat_1=46 '
+                          '+lat_2=44.33333333333334 '
+                          '+lon_0=-120.5 '
+                          '+x_0=2500000.0001424 '
+                          '+y_0=0 +ellps=GRS80 '
+                          '+towgs84=0,0,0,0,0,0,0 '
+                          '+units=ft +no_defs'))
 
     def get_gender_inclusive_restrooms(self):
         """
@@ -314,7 +325,7 @@ class LocationsGenerator:
             for coordinate in polygon:
                 pairs = []
                 for pair in coordinate:
-                    lon_lat = list(proj(pair[0], pair[1], inverse=True))
+                    lon_lat = list(self.proj(pair[0], pair[1], inverse=True))
                     pair = lon_lat + pair[2:] if len(pair) >= 2 else lon_lat
                     pairs.append(pair)
                 coordinates.append(pairs)
@@ -324,15 +335,6 @@ class LocationsGenerator:
 
         if response.status_code == 200:
             response_json = response.json()
-            proj = Proj(('+proj=lcc '
-                         '+lat_0=43.66666666666666 '
-                         '+lat_1=46 '
-                         '+lat_2=44.33333333333334 '
-                         '+lon_0=-120.5 '
-                         '+x_0=2500000.0001424 '
-                         '+y_0=0 +ellps=GRS80 '
-                         '+towgs84=0,0,0,0,0,0,0 '
-                         '+units=ft +no_defs'))
 
             for feature in response_json['features']:
                 geometry = feature['geometry']
@@ -399,7 +401,10 @@ class LocationsGenerator:
                 }
             return open_hours
 
-    def get_combined_data(self):
+    def generate_combined_locations(self):
+        """
+        Generate combined locations and write to JSON file
+        """
         base_url = self.config['locations_api']['url']
         facil_locations = self.get_facil_locations()
         gender_inclusive_restrooms = self.get_gender_inclusive_restrooms()
@@ -410,7 +415,9 @@ class LocationsGenerator:
         for location_id, raw_facil in facil_locations.items():
             raw_gir = gender_inclusive_restrooms.get(location_id)
             raw_geo = arcGIS_geometries.get(location_id)
-            facil_location = FacilLocation(raw_facil, raw_gir, raw_geo)
+            facil_location = FacilLocation(
+                raw_facil, raw_gir, raw_geo, self.proj
+            )
 
             locations.append(facil_location)
 
@@ -456,21 +463,21 @@ class LocationsGenerator:
                 for key, value in attributes.items():
                     location.update_attributes(key, value)
 
-            if location.attr['merge']:
+            if location.merge:
                 merge_data.append(location)
             else:
                 combined_locations.append(location)
 
         # Merge data with the original locations
-        for merge in merge_data:
+        for data in merge_data:
             for orig in combined_locations:
                 if (
-                    orig.attr['bldgId'] == merge.attr['name']
-                    and not orig.attr['merge']
+                    orig.attr['bldgId'] == data.attr['name']
+                    and not orig.merge
                 ):
                     attributes = {
-                        'openHours': merge.attr['openHours'],
-                        'tags': orig.attr['tags'] + merge.attr['tags']
+                        'openHours': data.attr['openHours'],
+                        'tags': orig.attr['tags'] + data.attr['tags']
                     }
                     for key, value in attributes.items():
                         orig.update_attributes(key, value)
@@ -480,22 +487,27 @@ class LocationsGenerator:
             for orig in combined_locations:
                 if (
                     orig.attr['bldgId'] == service.attr['parent']
-                    and not service.attr['merge']
+                    and not service.merge
                 ):
                     orig.relationships['services']['data'].append({
                         'id': service.calculate_hash_id(),
                         'type': service.type
                     })
 
-        # Convert location to JSON object
-        json_combined_locations = []
+        # Build location resources
+        combined_recourses = []
         for location in combined_locations:
-            json_location = location.build_json_resource(base_url)
-            json_combined_locations.append(json_location)
+            resource = location.build_resource(base_url)
+            combined_recourses.append(resource)
 
-        return json_combined_locations
+        # Write data to output file
+        output = self.config['output']
+        output_file = f'{output["path"]}/{output["locations"]}'
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        with open(output_file, 'w+') as file:
+            json.dump(combined_recourses, file)
 
 
 if __name__ == '__main__':
     locations_generator = LocationsGenerator()
-    locations_generator.get_combined_data()
+    locations_generator.generate_combined_locations()
