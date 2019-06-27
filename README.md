@@ -41,6 +41,6 @@ The Python script to generate locations data for the [Locations API](https://git
 
     ```shell
     $ docker run -v "$PWD"/configuration.yaml:/usr/src/app/configuration.yaml:ro \
-                -v "$PWD"/build:/usr/src/app/build \
-                locations-generator
+                 -v "$PWD"/build:/usr/src/app/build \
+                 locations-generator
     ```
