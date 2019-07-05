@@ -267,7 +267,7 @@ class FacilLocation(Location):
     def _get_pretty_campus(self, raw_campus):
         campus_dict = {
             'cascadescampus': 'Cascades',
-            'osucampus': 'Corvallis',
+            'osucorvallis': 'Corvallis',
             'hmsc': 'HMSC'
         }
         campus = None
