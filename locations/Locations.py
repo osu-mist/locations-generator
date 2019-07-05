@@ -1,11 +1,10 @@
+from abc import ABC, abstractmethod
 import re
-
-from overrides import overrides
 
 from utils import get_md5_hash
 
 
-class Location:
+class Location(ABC):
     """
     Base location type
     """
@@ -54,12 +53,14 @@ class Location:
             'weeklyMenu': None
         }
 
+    @abstractmethod
     def get_primary_id(self):
         """
         The function to get location's primary ID and needs to be overrode
         """
         pass
 
+    @abstractmethod
     def _set_attributes(self):
         """
         The function to set location's attributes and needs to be overrode
@@ -137,11 +138,9 @@ class ExtraLocation(Location):
         self.relationships = {'services': {'data': []}}
         self.merge = False
 
-    @overrides
     def get_primary_id(self):
         return self.bldg_id or self.name
 
-    @overrides
     def _set_attributes(self):
         attributes = {
             'name': self.name,
@@ -178,7 +177,6 @@ class ExtensionLocation(Location):
         self.merge = False
         self.bldg_id = None
 
-    @overrides
     def _create_geo_location(self, geo_location):
         if geo_location:
             search = re.search(r'-?\d+(\.\d+)?', geo_location)
@@ -187,11 +185,9 @@ class ExtensionLocation(Location):
                 'latitude': search.group(2)
             }
 
-    @overrides
     def get_primary_id(self):
         return self.guid
 
-    @overrides
     def _set_attributes(self):
         attributes = {
             'name': self.group_name,
@@ -286,11 +282,9 @@ class FacilLocation(Location):
     def _get_address(self, address1, address2):
         return f'{address1}\n{address2}' if address2 else address1
 
-    @overrides
     def get_primary_id(self):
         return self.bldg_id
 
-    @overrides
     def _set_attributes(self):
         attributes = {
             'name': self.name,
@@ -348,11 +342,9 @@ class ParkingLocation(Location):
         self.merge = False
         self.bldg_id = None
 
-    @overrides
     def get_primary_id(self):
         return f'{self.prop_id}{self.parking_zone_group}'
 
-    @overrides
     def _set_attributes(self):
         attributes = {
             'name': self.description,
@@ -406,11 +398,9 @@ class ServiceLocation(Location):
         self.relationships = {'services': {'data': []}}
         self.bldg_id = None
 
-    @overrides
     def get_primary_id(self):
         return self.calendar_id
 
-    @overrides
     def _set_attributes(self):
         if self.type == 'services':
             self.relationships = {'location': {'data': [

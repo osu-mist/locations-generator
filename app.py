@@ -48,7 +48,7 @@ class LocationsGenerator:
 
     def get_gender_inclusive_restrooms(self):
         """
-        Get gender inclusing restrooms data via arcGIS API
+        Get gender inclusive restrooms data via arcGIS API
         """
         config = self.config['locations']['arcGIS']
         url = f'{config["url"]}{config["genderInclusiveRR"]["endpoint"]}'
@@ -115,19 +115,20 @@ class LocationsGenerator:
         ignored_parkings = []
 
         for feature in parkings_coordinates['features']:
+            props = feature['properties']
             # Only fetch the location if Prop_ID and ZoneGroup are valid
             if (
-                utils.is_valid_field(feature['properties']['Prop_ID'])
-                and utils.is_valid_field(feature['properties']['ZoneGroup'])
+                utils.is_valid_field(props['Prop_ID'])
+                and utils.is_valid_field(props['ZoneGroup'])
             ):
                 parking_location = ParkingLocation(feature)
                 parking_locations.append(parking_location)
             else:
-                ignored_parkings.append(feature['properties']['OBJECTID'])
+                ignored_parkings.append(props['OBJECTID'])
 
         if ignored_parkings:
             logging.warning((
-                f'These parking lot OBJECTID\'s were ignored because they '
+                'These parking lot OBJECTID\'s were ignored because they '
                 f'don\'t have a valid Prop_ID or ZoneGroup: {ignored_parkings}'
             ))
 
@@ -451,15 +452,16 @@ class LocationsGenerator:
 
             # Merge with campus map data
             if resource_id in campus_map_data:
-                campus_recourse = campus_map_data[resource_id]
-                location.address = campus_recourse['address']
-                location.description = campus_recourse['description']
-                location.descriptionHtml = campus_recourse['descriptionHTML']
-                location.images = campus_recourse['images']
-                location.thumbnails = campus_recourse['thumbnail']
-                location.website = campus_recourse['mapUrl']
-                location.synonyms = campus_recourse['synonyms']
+                campus_resource = campus_map_data[resource_id]
+                location.address = campus_resource['address']
+                location.description = campus_resource['description']
+                location.descriptionHtml = campus_resource['descriptionHTML']
+                location.images = campus_resource['images']
+                location.thumbnails = campus_resource['thumbnail']
+                location.website = campus_resource['mapUrl']
+                location.synonyms = campus_resource['synonyms']
 
+                # Add open hours to The Valley Library (Building ID: 0036)
                 if location.bldg_id == '0036':
                     location.open_hours = self.get_library_hours()
 
@@ -500,7 +502,7 @@ class LocationsGenerator:
         output = self.config['output']
         locations_output = f'{output["path"]}/{output["locations"]}'
         os.makedirs(os.path.dirname(locations_output), exist_ok=True)
-        with open(locations_output, 'w+') as file:
+        with open(locations_output, 'w') as file:
             json.dump(combined_recourses, file)
 
         # Build service resources
@@ -512,7 +514,7 @@ class LocationsGenerator:
         # Write services data to output file
         services_output = f'{output["path"]}/{output["services"]}'
         os.makedirs(os.path.dirname(services_output), exist_ok=True)
-        with open(services_output, 'w+') as file:
+        with open(services_output, 'w') as file:
             json.dump(services, file)
 
 

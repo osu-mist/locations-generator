@@ -81,30 +81,31 @@ def format_library_hour(string):
     return '0' + string if len(string) <= 7 else string
 
 
-def to_utc(datetime):
+def to_utc(dt):
     """
     Helper function to convert the timezone of a datetime object to UTC
     """
-    return datetime.replace(tzinfo=timezone.utc)
+    return dt.replace(tzinfo=timezone.utc)
 
 
-def to_date(datetime):
+def to_date(dt):
     """
     Helper function to stringify a datetime object to date string
     """
-    return datetime.strftime('%Y-%m-%d')
+    return dt.strftime('%Y-%m-%d')
 
 
-def to_utc_string(datetime):
+def to_utc_string(dt):
     """
     Helper function to stringify a datetime object to UTC datetime string
     """
-    return datetime.strftime('%Y-%m-%dT%H:%M:%SZ')
+    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
 def is_valid_field(field):
     """
-    Helper function to determine if a field is valid or not
+    Helper function to determine if a field contains at least one
+    non-whitespace character
     """
     return field and field.strip()
 
