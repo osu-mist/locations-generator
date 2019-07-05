@@ -493,17 +493,17 @@ class LocationsGenerator:
                     })
 
         # Build location resources
-        combined_recourses = []
+        combined_resources = []
         for location in combined_locations:
             resource = location.build_resource(base_url)
-            combined_recourses.append(resource)
+            combined_resources.append(resource)
 
         # Write location data to output file
         output = self.config['output']
         locations_output = f'{output["path"]}/{output["locations"]}'
         os.makedirs(os.path.dirname(locations_output), exist_ok=True)
         with open(locations_output, 'w') as file:
-            json.dump(combined_recourses, file)
+            json.dump(combined_resources, file)
 
         # Build service resources
         services = []

@@ -58,14 +58,12 @@ class Location(ABC):
         """
         The function to get location's primary ID and needs to be overrode
         """
-        pass
 
     @abstractmethod
     def _set_attributes(self):
         """
         The function to set location's attributes and needs to be overrode
         """
-        pass
 
     def update_attributes(self, key, value):
         """
