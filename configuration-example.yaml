@@ -2,6 +2,8 @@ output:
   path: build
   locations: locations-combined.json
   services: services.json
+aws_elasticsearch:
+  host: example-domain.us-east-1.es.amazonaws.com
 locations_api:
   url: http://example.com
 locations:
@@ -86,7 +88,6 @@ locations:
     url: http://example.com
     calendar: calendar/index
     weeklyMenu: weeklymenu/index
-
 database:
   url: example_url
   user: user
