@@ -24,7 +24,26 @@ class ESManager:
                 _source=False
             )
             self.old_ids[index] = set([doc['_id'] for doc in scan])
+        self.bulk_body = {'locations': io.StringIO(), 'services': io.StringIO()}
 
+    def create_or_update_doc(self, index, doc):
+        body = self.bulk_body[index]
+        body.write(json.dumps({'index': {'_id': doc['id']}}))
+        body.write('\n')
+        body.write(json.dumps(doc))
+        body.write('\n')
+
+    def delete_doc(self, index, doc_id):
+        body = self.bulk_body[index]
+        body.write(json.dumps({'delete': {'_id': doc_id}}))
+        body.write('\n')
+
+    def bulk_docs(self, index):
+        return self.es.bulk(
+            body=self.bulk_body[index].getvalue(),
+            index=index,
+            doc_type=index
+        )
 
 if __name__ == '__main__':
     es_manager = ESManager()
@@ -36,27 +55,14 @@ if __name__ == '__main__':
         location_id = location['id']
         new_ids.add(location_id)
         if location_id not in es_manager.old_ids['locations']:
-            print(f'location {location_id} does not exist, performing CREATE')
-            body.write(json.dumps({'index': {'_id': location_id}}))
-            body.write('\n')
-            body.write(json.dumps(location))
-            body.write('\n')
+            print(f'CREATE: location {location_id}')
         else:
-            print(f'location {location_id} has existed, performing UPDATE')
-            body.write(json.dumps({'index': {'_id': location_id}}))
-            body.write('\n')
-            body.write(json.dumps(location))
-            body.write('\n')
+            print(f'UPDATE: location {location_id}')
+        es_manager.create_or_update_doc('locations', location)
 
     delete_ids = es_manager.old_ids['locations'] - new_ids
-    print(f'{len(delete_ids)} of locations will be deleted, they are {delete_ids}')
+    print(f'locations {delete_ids} will be deleted. ({len(delete_ids)} in total)')
     for delete_id in delete_ids:
-        body.write(json.dumps({'delete': {'_id': location_id}}))
-        body.write('\n')
+        es_manager.delete_doc('locations', delete_id)
 
-    response = es_manager.es.bulk(
-        body=body.getvalue(),
-        index='locations',
-        doc_type='locations'
-    )
-    # print(json.dumps(response, indent=4))
+    print(es_manager.bulk_docs('locations'))
