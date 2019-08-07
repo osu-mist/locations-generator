@@ -44,11 +44,12 @@ class ESManager:
         body.write('\n')
 
     def bulk_docs(self, index):
-        return self.es.bulk(
+        result = self.es.bulk(
             body=self.bulk_body[index].getvalue(),
             index=index,
             doc_type=index
         )
+        logging.info(pformat(result))
 
 
 if __name__ == '__main__':
@@ -74,6 +75,7 @@ if __name__ == '__main__':
         create_ids = new_ids - old_ids
         update_ids = new_ids.intersection(old_ids)
         delete_ids = old_ids - new_ids
+
         for delete_id in delete_ids:
             logging.info(f'[DELETE] {index} {delete_id}')
             es_manager.delete_doc(index, delete_id)
@@ -85,8 +87,7 @@ if __name__ == '__main__':
             f'Number of updating document: {len(update_ids)}\n'
             f'Number of deleting document: {len(delete_ids)}\n'
             f'Size of old ES instance: {len(old_ids)}\n'
-            f'Size of new ES instance: {len(docs)}\n'
+            f'Size of new ES instance: {len(new_ids)}\n'
             f'{"-" * 50}\n'
         )
-        result = es_manager.bulk_docs(index)
-        logging.info(pformat(result))
+        # es_manager.bulk_docs(index)
