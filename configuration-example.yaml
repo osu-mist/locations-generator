@@ -4,6 +4,7 @@ output:
   services: services.json
 aws_elasticsearch:
   host: example-domain.us-east-1.es.amazonaws.com
+  port: 1234
 locations_api:
   url: http://example.com
 locations:

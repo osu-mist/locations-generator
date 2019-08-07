@@ -90,4 +90,4 @@ if __name__ == '__main__':
             f'Size of new ES instance: {len(new_ids)}\n'
             f'{"-" * 50}\n'
         )
-        # es_manager.bulk_docs(index)
+        es_manager.bulk_docs(index)
