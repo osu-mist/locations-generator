@@ -1,7 +1,9 @@
 import io
 import json
+import logging
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection, helpers
+from pprint import pformat
 
 from utils import load_json, load_yaml
 
@@ -10,7 +12,7 @@ class ESManager:
     def __init__(self):
         self.config = load_yaml('configuration.yaml')['aws_elasticsearch']
         self.es = Elasticsearch(
-            hosts=[{'host': self.config['host'], 'port': 443}],
+            hosts=[{'host': self.config['host'], 'port': self.config['port']}],
             use_ssl=True,
             verify_certs=True,
             connection_class=RequestsHttpConnection
@@ -24,7 +26,10 @@ class ESManager:
                 _source=False
             )
             self.old_ids[index] = set([doc['_id'] for doc in scan])
-        self.bulk_body = {'locations': io.StringIO(), 'services': io.StringIO()}
+        self.bulk_body = {
+            'locations': io.StringIO(),
+            'services': io.StringIO()
+        }
 
     def create_or_update_doc(self, index, doc):
         body = self.bulk_body[index]
@@ -45,24 +50,43 @@ class ESManager:
             doc_type=index
         )
 
+
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logging.getLogger('elasticsearch').setLevel(logging.WARNING)
+
     es_manager = ESManager()
     locations = load_json('build/locations-combined.json')
+    services = load_json('build/services.json')
 
-    body = io.StringIO()
-    new_ids = set()
-    for location in locations:
-        location_id = location['id']
-        new_ids.add(location_id)
-        if location_id not in es_manager.old_ids['locations']:
-            print(f'CREATE: location {location_id}')
-        else:
-            print(f'UPDATE: location {location_id}')
-        es_manager.create_or_update_doc('locations', location)
+    for index, docs in [('locations', locations), ('services', services)]:
+        new_ids = set()
+        old_ids = es_manager.old_ids[index]
+        for doc in docs:
+            doc_id = doc['id']
+            new_ids.add(doc_id)
+            if doc_id not in old_ids:
+                logging.info(f'[CREATE] {index} {doc_id}')
+            else:
+                logging.info(f'[UPDATE] {index} {doc_id}')
+            es_manager.create_or_update_doc(index, doc)
 
-    delete_ids = es_manager.old_ids['locations'] - new_ids
-    print(f'locations {delete_ids} will be deleted. ({len(delete_ids)} in total)')
-    for delete_id in delete_ids:
-        es_manager.delete_doc('locations', delete_id)
+        create_ids = new_ids - old_ids
+        update_ids = new_ids.intersection(old_ids)
+        delete_ids = old_ids - new_ids
+        for delete_id in delete_ids:
+            logging.info(f'[DELETE] {index} {delete_id}')
+            es_manager.delete_doc(index, delete_id)
 
-    print(es_manager.bulk_docs('locations'))
+        logging.info(
+            f'{"-" * 50}\n'
+            f'Index: {index}\n'
+            f'Number of creating document: {len(create_ids)}\n'
+            f'Number of updating document: {len(update_ids)}\n'
+            f'Number of deleting document: {len(delete_ids)}\n'
+            f'Size of old ES instance: {len(old_ids)}\n'
+            f'Size of new ES instance: {len(docs)}\n'
+            f'{"-" * 50}\n'
+        )
+        result = es_manager.bulk_docs(index)
+        logging.info(pformat(result))

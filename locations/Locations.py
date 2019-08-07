@@ -98,6 +98,9 @@ class Location(ABC):
         """
         The function to calculate location's hash ID
         """
+        if self.get_primary_id() == '0c51532d-2963-47c3-ae37-97b21b78fe33':
+            print(self.type)
+
         return get_md5_hash(f'{self.type}{self.get_primary_id()}')
 
     def build_resource(self, api_base_url):
@@ -159,7 +162,7 @@ class ExtensionLocation(Location):
     def __init__(self, raw):
         self._init_attributes()
         self.guid = raw['GUID']
-        self.type = 'building'
+        self.type = 'other'
         self.campus = 'Extension'
         self.geo_location = self._create_geo_location(raw.get('GeoLocation'))
         self.group_name = raw.get('GroupName')

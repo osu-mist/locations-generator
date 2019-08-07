@@ -28,9 +28,9 @@ class LocationsGenerator:
 
         # Setup logging level
         if arguments.debug:
-            logging.basicConfig(level=logging.DEBUG)
+            logging.basicConfig(level=logging.DEBUG, format='%(message)s')
         else:
-            logging.basicConfig(level=logging.INFO)
+            logging.basicConfig(level=logging.INFO, format='%(message)s')
 
         self.today = datetime.utcnow().date()
         self.config = utils.load_yaml(arguments.config)
