@@ -50,7 +50,7 @@ class ESManager:
             index=index,
             doc_type=index
         )
-        logging.info(pformat(result))
+        logging.debug(pformat(result))
 
 
 if __name__ == '__main__':
@@ -90,4 +90,4 @@ if __name__ == '__main__':
             ['size of new ES instance', len(new_ids)]
         ]
         logging.info(f"{tabulate(summary_table, tablefmt='fancy_grid')}\n")
-        # es_manager.bulk_docs(index)
+        es_manager.bulk_docs(index)
