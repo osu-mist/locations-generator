@@ -81,13 +81,13 @@ if __name__ == '__main__':
             es_manager.delete_doc(index, delete_id)
 
         logging.info(
-            f'{"-" * 50}\n'
+            f"{'-' * 50}\n"
             f'Index: {index}\n'
             f'Number of creating document: {len(create_ids)}\n'
             f'Number of updating document: {len(update_ids)}\n'
             f'Number of deleting document: {len(delete_ids)}\n'
             f'Size of old ES instance: {len(old_ids)}\n'
             f'Size of new ES instance: {len(new_ids)}\n'
-            f'{"-" * 50}\n'
+            f"{'-' * 50}\n"
         )
         es_manager.bulk_docs(index)

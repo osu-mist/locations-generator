@@ -11,6 +11,7 @@ import grequests
 from icalendar import Calendar
 from pyproj import Proj
 import requests
+from tabulate import tabulate
 
 from locations.Locations import (
     ExtensionLocation,
@@ -51,7 +52,7 @@ class LocationsGenerator:
         Get gender inclusive restrooms data via arcGIS API
         """
         config = self.config['locations']['arcGIS']
-        url = f'{config["url"]}{config["genderInclusiveRR"]["endpoint"]}'
+        url = f"{config['url']}{config['genderInclusiveRR']['endpoint']}"
         params = config['genderInclusiveRR']['params']
 
         response = requests.get(url, params=params)
@@ -75,7 +76,7 @@ class LocationsGenerator:
         Get locations' geometry data via arcGIS API
         """
         config = self.config['locations']['arcGIS']
-        url = f'{config["url"]}{config["buildingGeometries"]["endpoint"]}'
+        url = f"{config['url']}{config['buildingGeometries']['endpoint']}"
         params = config['buildingGeometries']['params']
         buildings_coordinates = self.get_converted_coordinates(url, params)
 
@@ -107,7 +108,7 @@ class LocationsGenerator:
         """
 
         config = self.config['locations']['arcGIS']
-        url = f'{config["url"]}{config["parkingGeometries"]["endpoint"]}'
+        url = f"{config['url']}{config['parkingGeometries']['endpoint']}"
         params = config['parkingGeometries']['params']
         parkings_coordinates = self.get_converted_coordinates(url, params)
 
@@ -128,8 +129,9 @@ class LocationsGenerator:
 
         if ignored_parkings:
             logging.warning((
-                'These parking lot OBJECTID\'s were ignored because they '
-                f'don\'t have a valid Prop_ID or ZoneGroup: {ignored_parkings}'
+                '[Warning] '
+                "These parking lot OBJECTID's were ignored because they don't "
+                f"have a valid Prop_ID or ZoneGroup: {ignored_parkings}\n"
             ))
 
         return parking_locations
@@ -196,8 +198,8 @@ class LocationsGenerator:
         An async function to get dining locations via UHDS
         """
         config = self.config['locations']['uhds']
-        calendar_url = f'{config["url"]}/{config["calendar"]}'
-        week_menu_url = f'{config["url"]}/{config["weeklyMenu"]}'
+        calendar_url = f"{config['url']}/{config['calendar']}"
+        week_menu_url = f"{config['url']}/{config['weeklyMenu']}"
 
         response = requests.get(calendar_url)
         diners_data = {}
@@ -494,9 +496,23 @@ class LocationsGenerator:
 
         # Build location resources
         combined_resources = []
+        summary = defaultdict(int)
         for location in combined_locations:
+            summary[location.source] += 1
             resource = location.build_resource(base_url)
             combined_resources.append(resource)
+
+        total_number = 0
+        summary_table = []
+        for location_type, number in summary.items():
+            summary_table.append([location_type, number])
+            total_number += number
+        summary_table.append(['total', total_number])
+        logging.info(tabulate(
+            summary_table,
+            headers=['Location Type', 'Number'],
+            tablefmt='fancy_grid'
+        ))
 
         # Write location data to output file
         output = self.config['output']

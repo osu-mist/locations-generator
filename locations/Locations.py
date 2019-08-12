@@ -98,9 +98,6 @@ class Location(ABC):
         """
         The function to calculate location's hash ID
         """
-        if self.get_primary_id() == '0c51532d-2963-47c3-ae37-97b21b78fe33':
-            print(self.type)
-
         return get_md5_hash(f'{self.type}{self.get_primary_id()}')
 
     def build_resource(self, api_base_url):
@@ -127,6 +124,7 @@ class ExtraLocation(Location):
     """
     def __init__(self, raw):
         self._init_attributes()
+        self.source = 'extra-location'
         self.name = raw.get('name')
         self.bldg_id = raw.get('bldgID')
         self.campus = raw.get('campus')
@@ -161,6 +159,7 @@ class ExtensionLocation(Location):
     """
     def __init__(self, raw):
         self._init_attributes()
+        self.source = 'extension-location'
         self.guid = raw['GUID']
         self.type = 'other'
         self.campus = 'Extension'
@@ -230,6 +229,7 @@ class FacilLocation(Location):
             )
 
         self._init_attributes()
+        self.source = 'facil-location'
         self.bldg_id = raw_facil['id']
         self.type = 'building'
         self.tags = []
@@ -324,6 +324,7 @@ class ParkingLocation(Location):
         geometry = raw.get('geometry')
 
         self._init_attributes()
+        self.source = 'parking-location'
         self.prop_id = properties['Prop_ID']
         self.parking_zone_group = properties['ZoneGroup']
         self.type = 'parking'
@@ -380,6 +381,7 @@ class ServiceLocation(Location):
             weekly_menu = f'{week_menu_url}?loc={raw["loc_id"]}'
 
         self._init_attributes()
+        self.source = 'service-location'
         self.calendar_id = raw.get('calendar_id') or raw['calendarId']
         self.type = location_type
         self.campus = 'Corvallis'
