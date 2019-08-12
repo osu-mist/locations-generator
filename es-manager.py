@@ -4,6 +4,7 @@ import logging
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection, helpers
 from pprint import pformat
+from tabulate import tabulate
 
 from utils import load_json, load_yaml
 
@@ -80,14 +81,13 @@ if __name__ == '__main__':
             logging.info(f'[DELETE] {index} {delete_id}')
             es_manager.delete_doc(index, delete_id)
 
-        logging.info(
-            f"{'-' * 50}\n"
-            f'Index: {index}\n'
-            f'Number of creating document: {len(create_ids)}\n'
-            f'Number of updating document: {len(update_ids)}\n'
-            f'Number of deleting document: {len(delete_ids)}\n'
-            f'Size of old ES instance: {len(old_ids)}\n'
-            f'Size of new ES instance: {len(new_ids)}\n'
-            f"{'-' * 50}\n"
-        )
-        es_manager.bulk_docs(index)
+        summary_table = [
+            ['index', index],
+            ['number of creating document', len(create_ids)],
+            ['number of updating document', len(update_ids)],
+            ['number of deleting document', len(delete_ids)],
+            ['size of old ES instance', len(old_ids)],
+            ['size of new ES instance', len(new_ids)]
+        ]
+        logging.info(f"{tabulate(summary_table, tablefmt='fancy_grid')}\n")
+        # es_manager.bulk_docs(index)
