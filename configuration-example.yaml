@@ -5,6 +5,9 @@ output:
 aws_elasticsearch:
   host: example-domain.us-east-1.es.amazonaws.com
   port: 1234
+  region: us-east-2
+  access_id: access-id
+  access_key: access-key
 locations_api:
   url: http://example.com
 locations:

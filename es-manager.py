@@ -4,6 +4,7 @@ import logging
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection, helpers
 from pprint import pformat
+from requests_aws4auth import AWS4Auth
 from tabulate import tabulate
 
 from utils import load_json, load_yaml
@@ -11,9 +12,15 @@ from utils import load_json, load_yaml
 
 class ESManager:
     def __init__(self):
-        self.config = load_yaml('configuration.yaml')['aws_elasticsearch']
+        config = load_yaml('configuration.yaml')['aws_elasticsearch']
         self.es = Elasticsearch(
-            hosts=[{'host': self.config['host'], 'port': self.config['port']}],
+            hosts=[{'host': config['host'], 'port': config['port']}],
+            http_auth=AWS4Auth(
+                config['access_id'],
+                config['access_key'],
+                config['region'],
+                'es'
+            ),
             use_ssl=True,
             verify_certs=True,
             connection_class=RequestsHttpConnection
