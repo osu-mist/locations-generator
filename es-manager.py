@@ -7,12 +7,12 @@ from pprint import pformat
 from requests_aws4auth import AWS4Auth
 from tabulate import tabulate
 
-from utils import load_json, load_yaml
+from utils import load_json, load_yaml, parse_arguments
 
 
 class ESManager:
-    def __init__(self):
-        config = load_yaml('configuration.yaml')['aws_elasticsearch']
+    def __init__(self, config):
+        config = load_yaml(config)['aws_elasticsearch']
         self.es = Elasticsearch(
             hosts=[{'host': config['host'], 'port': config['port']}],
             http_auth=AWS4Auth(
@@ -75,12 +75,18 @@ class ESManager:
 
 
 if __name__ == '__main__':
+    arguments = parse_arguments()
+
     # Setup logging level
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    if arguments.debug:
+        logging.basicConfig(level=logging.DEBUG, format='%(message)s')
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
+
     logging.getLogger('elasticsearch').setLevel(logging.WARNING)
 
     # create ES manager instance
-    es_manager = ESManager()
+    es_manager = ESManager(arguments.config)
 
     # Load data from build artifacts
     locations = load_json('build/locations-combined.json')
