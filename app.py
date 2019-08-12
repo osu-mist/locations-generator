@@ -48,8 +48,10 @@ class LocationsGenerator:
                           '+units=ft +no_defs'))
 
     def get_gender_inclusive_restrooms(self):
-        """
-        Get gender inclusive restrooms data via arcGIS API
+        """Get gender inclusive restrooms data via arcGIS API
+
+        :returns: Gender inclusive restrooms
+        :rtype: dict
         """
         config = self.config['locations']['arcGIS']
         url = f"{config['url']}{config['genderInclusiveRR']['endpoint']}"
@@ -72,8 +74,10 @@ class LocationsGenerator:
         return gender_inclusive_restrooms
 
     def get_arcGIS_geometries(self):
-        """
-        Get locations' geometry data via arcGIS API
+        """Get locations' geometry data via arcGIS API
+
+        :returns: Locations arcGIS coordinates
+        :rtype: dict
         """
         config = self.config['locations']['arcGIS']
         url = f"{config['url']}{config['buildingGeometries']['endpoint']}"
@@ -103,8 +107,10 @@ class LocationsGenerator:
         return arcGIS_coordinates
 
     def get_parking_locations(self):
-        """
-        Get parking locations via arcGIS API
+        """Get parking locations via arcGIS API
+
+        :returns: Parking locations
+        :rtype: list
         """
 
         config = self.config['locations']['arcGIS']
@@ -137,8 +143,10 @@ class LocationsGenerator:
         return parking_locations
 
     def get_facil_locations(self):
-        """
-        Get facility locations via Banner
+        """Get facility locations via Banner
+
+        :returns: Facil locations
+        :rtype: dict
         """
         config = self.config['database']
         connection = connect(config['user'], config['password'], config['url'])
@@ -158,8 +166,10 @@ class LocationsGenerator:
         return facil_locations
 
     def get_campus_map_data(self):
-        """
-        Get campus map data by parsing JSON file
+        """Get campus map data by parsing JSON file
+
+        :returns: Campus map data
+        :rtype: dict
         """
         config = self.config['locations']['campusMap']
 
@@ -173,8 +183,10 @@ class LocationsGenerator:
         return campus_map_data
 
     def get_extension_locations(self):
-        """
-        Get extension locations by paring XML file
+        """Get extension locations by paring XML file
+
+        :returns: Extension locations
+        :rtype: list
         """
         config = self.config['locations']['extension']
 
@@ -194,8 +206,10 @@ class LocationsGenerator:
         return extension_data
 
     async def get_dining_locations(self):
-        """
-        An async function to get dining locations via UHDS
+        """An async function to get dining locations via UHDS
+
+        :returns: Dining locations
+        :rtype: dict
         """
         config = self.config['locations']['uhds']
         calendar_url = f"{config['url']}/{config['calendar']}"
@@ -235,8 +249,10 @@ class LocationsGenerator:
             return list(diners_data.values())
 
     def get_extra_locations(self):
-        """
-        A function to get extra location data
+        """A function to get extra location data
+
+        :returns: Extra locations
+        :rtype: list
         """
         extra_locations = []
 
@@ -247,8 +263,10 @@ class LocationsGenerator:
         return extra_locations
 
     async def get_extra_calendars(self):
-        """
-        An async function to get extra calendars data
+        """An async function to get extra calendars data
+
+        :returns: Extra calendars data
+        :rtype: dict
         """
         extra_data = defaultdict(list)
         data = {}
@@ -291,8 +309,10 @@ class LocationsGenerator:
         return extra_data
 
     def get_location_open_hours(self, response):
-        """
-        Get location open hour by parsing iCalendar files
+        """Get location open hour by parsing iCalendar files
+
+        :returns: Locations open hours
+        :rtype: dict
         """
         open_hours = {}
 
@@ -322,12 +342,17 @@ class LocationsGenerator:
             return open_hours
 
     def get_converted_coordinates(self, url, params):
-        """
-        Convert ArcGIS coordinates to latitude and longitude
+        """Convert ArcGIS coordinates to latitude and longitude
+
+        :returns: Convert ArcGIS coordinates
+        :rtype: dict
         """
         def _convert_polygon(polygon):
-            """
-            The helper function to convert a polygon location
+            """The helper function to convert a polygon location
+
+            :param polygon: Polygon location to be converted
+            :returns: Converted coordinates
+            :rtype: list
             """
             coordinates = []
             for coordinate in polygon:
@@ -365,8 +390,10 @@ class LocationsGenerator:
         return response_json
 
     def get_library_hours(self):
-        """
-        Get library open hours via library API
+        """Get library open hours via library API
+
+        :returns: Library open hors
+        :rtype: dict
         """
         config = self.config['locations']['library']
 
