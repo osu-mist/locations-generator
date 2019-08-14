@@ -12,12 +12,12 @@ from utils import load_json, load_yaml, parse_arguments
 
 class ESManager:
     def __init__(self, config):
-        config = load_yaml(config)['aws_elasticsearch']
+        config = load_yaml(config)['awsElasticsearch']
         self.es = Elasticsearch(
             hosts=[{'host': config['host'], 'port': config['port']}],
             http_auth=AWS4Auth(
-                config['access_id'],
-                config['access_key'],
+                config['accessId'],
+                config['accessKey'],
                 config['region'],
                 'es'
             ),
@@ -25,7 +25,7 @@ class ESManager:
             verify_certs=True,
             connection_class=RequestsHttpConnection
         )
-        self.old_ids = {}
+        self.current_ids = {}
         for index in ['locations', 'services']:
             scan = helpers.scan(
                 self.es,
@@ -33,7 +33,7 @@ class ESManager:
                 doc_type=index,
                 _source=False  # don't include bodies
             )
-            self.old_ids[index] = set([doc['_id'] for doc in scan])
+            self.current_ids[index] = set([doc['_id'] for doc in scan])
         self.bulk_body = {
             'locations': io.StringIO(),
             'services': io.StringIO()
@@ -78,42 +78,44 @@ if __name__ == '__main__':
     arguments = parse_arguments()
 
     # Setup logging level
-    if arguments.debug:
-        logging.basicConfig(level=logging.DEBUG, format='%(message)s')
-    else:
-        logging.basicConfig(level=logging.INFO, format='%(message)s')
-
+    logging.basicConfig(
+        level=(logging.DEBUG if arguments.debug else logging.INFO)
+    )
+    logger = logging.getLogger(__name__)
+    # Set logging level to WARNING for the logger of elasticsearch package
     logging.getLogger('elasticsearch').setLevel(logging.WARNING)
 
     # create ES manager instance
     es_manager = ESManager(arguments.config)
 
     # Load data from build artifacts
-    locations = load_json('build/locations-combined.json')
-    services = load_json('build/services.json')
+    output_folder = 'build'
+    locations = load_json(f'{output_folder}/locations-combined.json')
+    services = load_json(f'{output_folder}/services.json')
 
     for index, docs in [('locations', locations), ('services', services)]:
-        new_ids = set()
-        old_ids = es_manager.old_ids[index]
+        current_ids = es_manager.current_ids[index]
+        artifact_ids = set()
+        create_ids = set()
+        update_ids = set()
+        delete_ids = set()
         for doc in docs:
             doc_id = doc['id']
-            new_ids.add(doc_id)
-            if doc_id not in old_ids:
-                # Perform a CREATE if document ID not in old ID set
-                logging.info(f'[CREATE] {index} {doc_id}')
+            artifact_ids.add(doc_id)
+            if doc_id not in current_ids:
+                # Perform a CREATE if document ID not in current ID set
+                logger.info(f'[CREATE] {index} {doc_id}')
+                create_ids.add(doc_id)
             else:
-                # Perform a UPDATE if document ID in old ID set
-                logging.info(f'[UPDATE] {index} {doc_id}')
+                # Perform a UPDATE if document ID in current ID set
+                logger.info(f'[UPDATE] {index} {doc_id}')
+                update_ids.add(doc_id)
             es_manager.create_or_update_doc(index, doc)
-
-        # Calculate ID status
-        create_ids = new_ids - old_ids
-        update_ids = new_ids.intersection(old_ids)
-        delete_ids = old_ids - new_ids
 
         for delete_id in delete_ids:
             # Perform a DELETE for each ID in delete ID set
-            logging.info(f'[DELETE] {index} {delete_id}')
+            logger.info(f'[DELETE] {index} {delete_id}')
+            delete_ids.add(doc_id)
             es_manager.delete_doc(index, delete_id)
 
         summary_table = [
@@ -121,8 +123,8 @@ if __name__ == '__main__':
             ['number of creating document', len(create_ids)],
             ['number of updating document', len(update_ids)],
             ['number of deleting document', len(delete_ids)],
-            ['size of old ES instance', len(old_ids)],
-            ['size of new ES instance', len(new_ids)]
+            ['size of current ES instance', len(current_ids)],
+            ['size of new ES instance', len(artifact_ids)]
         ]
-        logging.info(f"{tabulate(summary_table, tablefmt='fancy_grid')}\n")
+        logger.info(f"\n{tabulate(summary_table, tablefmt='fancy_grid')}\n")
         es_manager.bulk_query(index)

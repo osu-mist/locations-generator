@@ -8,6 +8,9 @@ import sys
 import yaml
 
 
+logger = logging.getLogger(__name__)
+
+
 def parse_arguments():
     """Helper function for parsing command-line arguments
 
@@ -40,7 +43,7 @@ def load_yaml(file_name):
         try:
             return yaml.safe_load(file)
         except yaml.YAMLError as error:
-            logging.debug(error)
+            logger.debug(error)
             sys.exit(f'Unable to parse {file_name}')
 
 
@@ -55,7 +58,7 @@ def load_json(file_name):
         try:
             return json.load(file)
         except json.decoder.JSONDecodeError as error:
-            logging.debug(error)
+            logger.debug(error)
             sys.exit(f'Unable to parse {file_name}')
 
 
@@ -70,7 +73,7 @@ def load_file(file_name):
         try:
             return file.read()
         except FileNotFoundError as error:
-            logging.debug(error)
+            logger.debug(error)
             sys.exit(f'File {file_name} not found')
 
 

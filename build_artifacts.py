@@ -24,15 +24,7 @@ import utils
 
 
 class LocationsGenerator:
-    def __init__(self):
-        arguments = utils.parse_arguments()
-
-        # Setup logging level
-        if arguments.debug:
-            logging.basicConfig(level=logging.DEBUG, format='%(message)s')
-        else:
-            logging.basicConfig(level=logging.INFO, format='%(message)s')
-
+    def __init__(self, arguments):
         self.today = datetime.utcnow().date()
         self.config = utils.load_yaml(arguments.config)
         self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
@@ -73,7 +65,7 @@ class LocationsGenerator:
 
         return gender_inclusive_restrooms
 
-    def get_arcGIS_geometries(self):
+    def get_arcgis_geometries(self):
         """Get locations' geometry data via arcGIS API
 
         :returns: Locations arcGIS coordinates
@@ -84,12 +76,12 @@ class LocationsGenerator:
         params = config['buildingGeometries']['params']
         buildings_coordinates = self.get_converted_coordinates(url, params)
 
-        arcGIS_coordinates = {}
+        arcgis_coordinates = {}
 
         for feature in buildings_coordinates['features']:
             prop = feature['properties']
 
-            arcGIS_location = {
+            arcgis_location = {
                 'abbreviation': prop.get('BldNamAbr'),
                 'latitude': prop.get('Cent_Lat'),
                 'longitude': prop.get('Cent_Lon'),
@@ -99,12 +91,12 @@ class LocationsGenerator:
 
             if feature['geometry']:
                 geometry = feature['geometry']
-                arcGIS_location['coordinates'] = geometry.get('coordinates')
-                arcGIS_location['coordinatesType'] = geometry.get('type')
+                arcgis_location['coordinates'] = geometry.get('coordinates')
+                arcgis_location['coordinatesType'] = geometry.get('type')
 
-            arcGIS_coordinates[prop['BldID']] = arcGIS_location
+            arcgis_coordinates[prop['BldID']] = arcgis_location
 
-        return arcGIS_coordinates
+        return arcgis_coordinates
 
     def get_parking_locations(self):
         """Get parking locations via arcGIS API
@@ -134,8 +126,7 @@ class LocationsGenerator:
                 ignored_parkings.append(props['OBJECTID'])
 
         if ignored_parkings:
-            logging.warning((
-                '[Warning] '
+            logger.warning((
                 "These parking lot OBJECTID's were ignored because they don't "
                 f"have a valid Prop_ID or ZoneGroup: {ignored_parkings}\n"
             ))
@@ -183,7 +174,7 @@ class LocationsGenerator:
         return campus_map_data
 
     def get_extension_locations(self):
-        """Get extension locations by paring XML file
+        """Get extension locations by parsing XML file
 
         :returns: Extension locations
         :rtype: list
@@ -380,7 +371,7 @@ class LocationsGenerator:
                     for polygon in geometry['coordinates']:
                         coordinates.append(_convert_polygon(polygon))
                 else:
-                    logging.warning((
+                    logger.warning((
                         f'Ignoring unknown geometry type: {geometry_type}. '
                         f'(id: {feature["id"]})'
                     ))
@@ -392,7 +383,7 @@ class LocationsGenerator:
     def get_library_hours(self):
         """Get library open hours via library API
 
-        :returns: Library open hors
+        :returns: Library open hours
         :rtype: dict
         """
         config = self.config['locations']['library']
@@ -440,10 +431,10 @@ class LocationsGenerator:
         """
         Generate resources and write to JSON files
         """
-        base_url = self.config['locations_api']['url']
+        base_url = self.config['locationsApi']['url']
         facil_locations = self.get_facil_locations()
         gender_inclusive_restrooms = self.get_gender_inclusive_restrooms()
-        arcGIS_geometries = self.get_arcGIS_geometries()
+        arcGIS_geometries = self.get_arcgis_geometries()
         locations = []
 
         # Merge facil locations, gender inclusive restrooms and geometry data
@@ -535,15 +526,16 @@ class LocationsGenerator:
             summary_table.append([location_type, number])
             total_number += number
         summary_table.append(['total', total_number])
-        logging.info(tabulate(
+        table_output = tabulate(
             summary_table,
             headers=['Location Type', 'Number'],
             tablefmt='fancy_grid'
-        ))
+        )
+        logger.info(f"\n{table_output}")
 
+        output_folder = 'build'
         # Write location data to output file
-        output = self.config['output']
-        locations_output = f'{output["path"]}/{output["locations"]}'
+        locations_output = f'{output_folder}/locations-combined.json'
         os.makedirs(os.path.dirname(locations_output), exist_ok=True)
         with open(locations_output, 'w') as file:
             json.dump(combined_resources, file)
@@ -555,12 +547,20 @@ class LocationsGenerator:
             services.append(resource)
 
         # Write services data to output file
-        services_output = f'{output["path"]}/{output["services"]}'
+        services_output = f'{output_folder}/services.json'
         os.makedirs(os.path.dirname(services_output), exist_ok=True)
         with open(services_output, 'w') as file:
             json.dump(services, file)
 
 
 if __name__ == '__main__':
-    locations_generator = LocationsGenerator()
+    arguments = utils.parse_arguments()
+
+    # Setup logging level
+    logging.basicConfig(
+        level=(logging.DEBUG if arguments.debug else logging.INFO)
+    )
+    logger = logging.getLogger(__name__)
+
+    locations_generator = LocationsGenerator(arguments)
     locations_generator.generate_json_resources()

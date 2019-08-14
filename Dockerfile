@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 USER nobody:nogroup
 
-CMD ["python", "build-artifacts.py", "--config=configuration.yaml"]
+CMD ["python", "build_artifacts.py", "--config=configuration.yaml"]

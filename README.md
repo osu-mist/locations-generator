@@ -31,8 +31,8 @@ The Python script to generate locations data for the [Locations API](https://git
 
     If the script runs successfully, the following two files will be generated in the `./build` directory:
 
-        * `locations-combinations.json` - Combined OSU locations list from various data sources
-        * `services.json` - OSU services data list
+    * `locations-combined.json` - Combined OSU locations list from various data sources
+    * `services.json` - OSU services data list
 
 4. Update AWS Elasticsearch instance:
 
