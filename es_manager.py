@@ -1,9 +1,9 @@
 import io
 import json
 import logging
+from pprint import pformat
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection, helpers
-from pprint import pformat
 from requests_aws4auth import AWS4Auth
 from tabulate import tabulate
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
         artifact_ids = set()
         create_ids = set()
         update_ids = set()
-        delete_ids = set()
+
         for doc in docs:
             doc_id = doc['id']
             artifact_ids.add(doc_id)
@@ -112,10 +112,10 @@ if __name__ == '__main__':
                 update_ids.add(doc_id)
             es_manager.create_or_update_doc(index, doc)
 
+        delete_ids = current_ids - artifact_ids
         for delete_id in delete_ids:
             # Perform a DELETE for each ID in delete ID set
             logger.info(f'[DELETE] {index} {delete_id}')
-            delete_ids.add(doc_id)
             es_manager.delete_doc(index, delete_id)
 
         summary_table = [

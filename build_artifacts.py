@@ -291,7 +291,7 @@ class LocationsGenerator:
             open_hours = self.get_location_open_hours(response)
             data[calendar_id].open_hours = open_hours
 
-        for _, item in data.items():
+        for item in data.values():
             if item.type == 'services':
                 extra_data['services'].append(item)
             else:
@@ -407,7 +407,7 @@ class LocationsGenerator:
                 week_day = self.today + timedelta(days=day)
                 open_hours[utils.to_date(week_day)] = []
 
-            for key, value in response.json().items():
+            for value in response.json().values():
                 datetime_format = '%Y-%m-%d %I:%M%p'
                 date = value['sortable_date']
                 begin = utils.format_library_hour(value['open'])
@@ -434,13 +434,13 @@ class LocationsGenerator:
         base_url = self.config['locationsApi']['url']
         facil_locations = self.get_facil_locations()
         gender_inclusive_restrooms = self.get_gender_inclusive_restrooms()
-        arcGIS_geometries = self.get_arcgis_geometries()
+        arcgis_geometries = self.get_arcgis_geometries()
         locations = []
 
         # Merge facil locations, gender inclusive restrooms and geometry data
         for location_id, raw_facil in facil_locations.items():
             raw_gir = gender_inclusive_restrooms.get(location_id)
-            raw_geo = arcGIS_geometries.get(location_id)
+            raw_geo = arcgis_geometries.get(location_id)
             facil_location = FacilLocation(
                 raw_facil, raw_gir, raw_geo, self.proj
             )
