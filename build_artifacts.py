@@ -11,6 +11,7 @@ import grequests
 from icalendar import Calendar
 from pyproj import Proj
 import requests
+from tabulate import tabulate
 
 from locations.Locations import (
     ExtensionLocation,
@@ -23,15 +24,7 @@ import utils
 
 
 class LocationsGenerator:
-    def __init__(self):
-        arguments = utils.parse_arguments()
-
-        # Setup logging level
-        if arguments.debug:
-            logging.basicConfig(level=logging.DEBUG)
-        else:
-            logging.basicConfig(level=logging.INFO)
-
+    def __init__(self, arguments):
         self.today = datetime.utcnow().date()
         self.config = utils.load_yaml(arguments.config)
         self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
@@ -47,11 +40,13 @@ class LocationsGenerator:
                           '+units=ft +no_defs'))
 
     def get_gender_inclusive_restrooms(self):
-        """
-        Get gender inclusive restrooms data via arcGIS API
+        """Get gender inclusive restrooms data via arcGIS API
+
+        :returns: Gender inclusive restrooms
+        :rtype: dict
         """
         config = self.config['locations']['arcGIS']
-        url = f'{config["url"]}{config["genderInclusiveRR"]["endpoint"]}'
+        url = f"{config['url']}{config['genderInclusiveRR']['endpoint']}"
         params = config['genderInclusiveRR']['params']
 
         response = requests.get(url, params=params)
@@ -70,21 +65,23 @@ class LocationsGenerator:
 
         return gender_inclusive_restrooms
 
-    def get_arcGIS_geometries(self):
-        """
-        Get locations' geometry data via arcGIS API
+    def get_arcgis_geometries(self):
+        """Get locations' geometry data via arcGIS API
+
+        :returns: Locations arcGIS coordinates
+        :rtype: dict
         """
         config = self.config['locations']['arcGIS']
-        url = f'{config["url"]}{config["buildingGeometries"]["endpoint"]}'
+        url = f"{config['url']}{config['buildingGeometries']['endpoint']}"
         params = config['buildingGeometries']['params']
         buildings_coordinates = self.get_converted_coordinates(url, params)
 
-        arcGIS_coordinates = {}
+        arcgis_coordinates = {}
 
         for feature in buildings_coordinates['features']:
             prop = feature['properties']
 
-            arcGIS_location = {
+            arcgis_location = {
                 'abbreviation': prop.get('BldNamAbr'),
                 'latitude': prop.get('Cent_Lat'),
                 'longitude': prop.get('Cent_Lon'),
@@ -94,20 +91,22 @@ class LocationsGenerator:
 
             if feature['geometry']:
                 geometry = feature['geometry']
-                arcGIS_location['coordinates'] = geometry.get('coordinates')
-                arcGIS_location['coordinatesType'] = geometry.get('type')
+                arcgis_location['coordinates'] = geometry.get('coordinates')
+                arcgis_location['coordinatesType'] = geometry.get('type')
 
-            arcGIS_coordinates[prop['BldID']] = arcGIS_location
+            arcgis_coordinates[prop['BldID']] = arcgis_location
 
-        return arcGIS_coordinates
+        return arcgis_coordinates
 
     def get_parking_locations(self):
-        """
-        Get parking locations via arcGIS API
+        """Get parking locations via arcGIS API
+
+        :returns: Parking locations
+        :rtype: list
         """
 
         config = self.config['locations']['arcGIS']
-        url = f'{config["url"]}{config["parkingGeometries"]["endpoint"]}'
+        url = f"{config['url']}{config['parkingGeometries']['endpoint']}"
         params = config['parkingGeometries']['params']
         parkings_coordinates = self.get_converted_coordinates(url, params)
 
@@ -127,16 +126,18 @@ class LocationsGenerator:
                 ignored_parkings.append(props['OBJECTID'])
 
         if ignored_parkings:
-            logging.warning((
-                'These parking lot OBJECTID\'s were ignored because they '
-                f'don\'t have a valid Prop_ID or ZoneGroup: {ignored_parkings}'
+            logger.warning((
+                "These parking lot OBJECTID's were ignored because they don't "
+                f"have a valid Prop_ID or ZoneGroup: {ignored_parkings}\n"
             ))
 
         return parking_locations
 
     def get_facil_locations(self):
-        """
-        Get facility locations via Banner
+        """Get facility locations via Banner
+
+        :returns: Facil locations
+        :rtype: dict
         """
         config = self.config['database']
         connection = connect(config['user'], config['password'], config['url'])
@@ -156,8 +157,10 @@ class LocationsGenerator:
         return facil_locations
 
     def get_campus_map_data(self):
-        """
-        Get campus map data by parsing JSON file
+        """Get campus map data by parsing JSON file
+
+        :returns: Campus map data
+        :rtype: dict
         """
         config = self.config['locations']['campusMap']
 
@@ -171,8 +174,10 @@ class LocationsGenerator:
         return campus_map_data
 
     def get_extension_locations(self):
-        """
-        Get extension locations by paring XML file
+        """Get extension locations by parsing XML file
+
+        :returns: Extension locations
+        :rtype: list
         """
         config = self.config['locations']['extension']
 
@@ -192,12 +197,14 @@ class LocationsGenerator:
         return extension_data
 
     async def get_dining_locations(self):
-        """
-        An async function to get dining locations via UHDS
+        """An async function to get dining locations via UHDS
+
+        :returns: Dining locations
+        :rtype: dict
         """
         config = self.config['locations']['uhds']
-        calendar_url = f'{config["url"]}/{config["calendar"]}'
-        week_menu_url = f'{config["url"]}/{config["weeklyMenu"]}'
+        calendar_url = f"{config['url']}/{config['calendar']}"
+        week_menu_url = f"{config['url']}/{config['weeklyMenu']}"
 
         response = requests.get(calendar_url)
         diners_data = {}
@@ -233,8 +240,10 @@ class LocationsGenerator:
             return list(diners_data.values())
 
     def get_extra_locations(self):
-        """
-        A function to get extra location data
+        """A function to get extra location data
+
+        :returns: Extra locations
+        :rtype: list
         """
         extra_locations = []
 
@@ -245,8 +254,10 @@ class LocationsGenerator:
         return extra_locations
 
     async def get_extra_calendars(self):
-        """
-        An async function to get extra calendars data
+        """An async function to get extra calendars data
+
+        :returns: Extra calendars data
+        :rtype: dict
         """
         extra_data = defaultdict(list)
         data = {}
@@ -280,7 +291,7 @@ class LocationsGenerator:
             open_hours = self.get_location_open_hours(response)
             data[calendar_id].open_hours = open_hours
 
-        for _, item in data.items():
+        for item in data.values():
             if item.type == 'services':
                 extra_data['services'].append(item)
             else:
@@ -289,8 +300,10 @@ class LocationsGenerator:
         return extra_data
 
     def get_location_open_hours(self, response):
-        """
-        Get location open hour by parsing iCalendar files
+        """Get location open hour by parsing iCalendar files
+
+        :returns: Locations open hours
+        :rtype: dict
         """
         open_hours = {}
 
@@ -320,12 +333,17 @@ class LocationsGenerator:
             return open_hours
 
     def get_converted_coordinates(self, url, params):
-        """
-        Convert ArcGIS coordinates to latitude and longitude
+        """Convert ArcGIS coordinates to latitude and longitude
+
+        :returns: Convert ArcGIS coordinates
+        :rtype: dict
         """
         def _convert_polygon(polygon):
-            """
-            The helper function to convert a polygon location
+            """The helper function to convert a polygon location
+
+            :param polygon: Polygon location to be converted
+            :returns: Converted coordinates
+            :rtype: list
             """
             coordinates = []
             for coordinate in polygon:
@@ -353,7 +371,7 @@ class LocationsGenerator:
                     for polygon in geometry['coordinates']:
                         coordinates.append(_convert_polygon(polygon))
                 else:
-                    logging.warning((
+                    logger.warning((
                         f'Ignoring unknown geometry type: {geometry_type}. '
                         f'(id: {feature["id"]})'
                     ))
@@ -363,8 +381,10 @@ class LocationsGenerator:
         return response_json
 
     def get_library_hours(self):
-        """
-        Get library open hours via library API
+        """Get library open hours via library API
+
+        :returns: Library open hours
+        :rtype: dict
         """
         config = self.config['locations']['library']
 
@@ -387,7 +407,7 @@ class LocationsGenerator:
                 week_day = self.today + timedelta(days=day)
                 open_hours[utils.to_date(week_day)] = []
 
-            for key, value in response.json().items():
+            for value in response.json().values():
                 datetime_format = '%Y-%m-%d %I:%M%p'
                 date = value['sortable_date']
                 begin = utils.format_library_hour(value['open'])
@@ -411,16 +431,16 @@ class LocationsGenerator:
         """
         Generate resources and write to JSON files
         """
-        base_url = self.config['locations_api']['url']
+        base_url = self.config['locationsApi']['url']
         facil_locations = self.get_facil_locations()
         gender_inclusive_restrooms = self.get_gender_inclusive_restrooms()
-        arcGIS_geometries = self.get_arcGIS_geometries()
+        arcgis_geometries = self.get_arcgis_geometries()
         locations = []
 
         # Merge facil locations, gender inclusive restrooms and geometry data
         for location_id, raw_facil in facil_locations.items():
             raw_gir = gender_inclusive_restrooms.get(location_id)
-            raw_geo = arcGIS_geometries.get(location_id)
+            raw_geo = arcgis_geometries.get(location_id)
             facil_location = FacilLocation(
                 raw_facil, raw_gir, raw_geo, self.proj
             )
@@ -494,13 +514,28 @@ class LocationsGenerator:
 
         # Build location resources
         combined_resources = []
+        summary = defaultdict(int)
         for location in combined_locations:
+            summary[location.source] += 1
             resource = location.build_resource(base_url)
             combined_resources.append(resource)
 
+        total_number = 0
+        summary_table = []
+        for location_type, number in summary.items():
+            summary_table.append([location_type, number])
+            total_number += number
+        summary_table.append(['total', total_number])
+        table_output = tabulate(
+            summary_table,
+            headers=['Location Type', 'Number'],
+            tablefmt='fancy_grid'
+        )
+        logger.info(f"\n{table_output}")
+
+        output_folder = 'build'
         # Write location data to output file
-        output = self.config['output']
-        locations_output = f'{output["path"]}/{output["locations"]}'
+        locations_output = f'{output_folder}/locations-combined.json'
         os.makedirs(os.path.dirname(locations_output), exist_ok=True)
         with open(locations_output, 'w') as file:
             json.dump(combined_resources, file)
@@ -512,12 +547,20 @@ class LocationsGenerator:
             services.append(resource)
 
         # Write services data to output file
-        services_output = f'{output["path"]}/{output["services"]}'
+        services_output = f'{output_folder}/services.json'
         os.makedirs(os.path.dirname(services_output), exist_ok=True)
         with open(services_output, 'w') as file:
             json.dump(services, file)
 
 
 if __name__ == '__main__':
-    locations_generator = LocationsGenerator()
+    arguments = utils.parse_arguments()
+
+    # Setup logging level
+    logging.basicConfig(
+        level=(logging.DEBUG if arguments.debug else logging.INFO)
+    )
+    logger = logging.getLogger(__name__)
+
+    locations_generator = LocationsGenerator(arguments)
     locations_generator.generate_json_resources()

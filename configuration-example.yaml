@@ -1,8 +1,10 @@
-output:
-  path: build
-  locations: locations-combined.json
-  services: services.json
-locations_api:
+awsElasticsearch:
+  host: example-domain.us-east-1.es.amazonaws.com
+  port: 1234
+  region: us-east-2
+  accessId: access-id
+  accessKey: access-key
+locationsApi:
   url: http://example.com
 locations:
   arcGIS:
@@ -86,7 +88,6 @@ locations:
     url: http://example.com
     calendar: calendar/index
     weeklyMenu: weeklymenu/index
-
 database:
   url: example_url
   user: user

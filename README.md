@@ -23,16 +23,22 @@ The Python script to generate locations data for the [Locations API](https://git
     $ pip install -r requirements.txt
     ```
 
-3. Run the integration test:
+3. Build the artifacts:
 
     ```shell
-    $ python app.py --config=configuration.yaml
+    $ python build-artifacts.py --config=configuration.yaml
     ```
 
-4. If the script runs successfully, the following two files will be generated in the `./build` directory:
+    If the script runs successfully, the following two files will be generated in the `./build` directory:
 
-    * `locations-combinations.json` - Combined OSU locations list from various data sources
+    * `locations_combined.json` - Combined OSU locations list from various data sources
     * `services.json` - OSU services data list
+
+4. Update AWS Elasticsearch instance:
+
+    ```shell
+    $ python es_manager.py --config=configuration.yaml
+    ```
 
 ## Docker
 

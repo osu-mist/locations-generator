@@ -66,8 +66,10 @@ class Location(ABC):
         """
 
     def update_attributes(self, key, value):
-        """
-        The helper function update attribute value
+        """The helper function update attribute value
+
+        :param key: Attribute key
+        :param value: Attribute value
         """
         if key not in self.attr:
             raise KeyError(f'{key} is not defined in location attributes.')
@@ -75,8 +77,12 @@ class Location(ABC):
             self.attr[key] = value
 
     def _create_geo_location(self, longitude, latitude):
-        """
-        The helper function to generate geo location object
+        """The helper function to generate geo location object
+
+        :param longitude: Longitude
+        :param latitude: Latitude
+        :returns: Geolocation object
+        :rtype: dict
         """
         if longitude and latitude:
             return {
@@ -85,8 +91,12 @@ class Location(ABC):
             }
 
     def _create_geometry(self, coordinates_type, coordinates):
-        """
-        The helper function to generate geometry object
+        """The helper function to generate geometry object
+
+        :param coordinates_type: Coordinates type
+        :param coordinates: Coordinates
+        :returns: Geometry object
+        :rtype: dict
         """
         if coordinates_type and coordinates:
             return {
@@ -95,14 +105,19 @@ class Location(ABC):
             }
 
     def calculate_hash_id(self):
-        """
-        The function to calculate location's hash ID
+        """The function to calculate location's hash ID
+
+        :returns: MD5 hash ID string
+        :rtype: str
         """
         return get_md5_hash(f'{self.type}{self.get_primary_id()}')
 
     def build_resource(self, api_base_url):
-        """
-        The function to build location resource
+        """The function to build location resource
+
+        :param api_base_url: API base URL
+        :returns: Location resource adhere to JSONAPI convention
+        :rtype: dict
         """
         self._set_attributes()
         resource_id = self.calculate_hash_id()
@@ -124,6 +139,7 @@ class ExtraLocation(Location):
     """
     def __init__(self, raw):
         self._init_attributes()
+        self.source = 'extra-location'
         self.name = raw.get('name')
         self.bldg_id = raw.get('bldgID')
         self.campus = raw.get('campus')
@@ -158,8 +174,9 @@ class ExtensionLocation(Location):
     """
     def __init__(self, raw):
         self._init_attributes()
+        self.source = 'extension-location'
         self.guid = raw['GUID']
-        self.type = 'building'
+        self.type = 'other'
         self.campus = 'Extension'
         self.geo_location = self._create_geo_location(raw.get('GeoLocation'))
         self.group_name = raw.get('GroupName')
@@ -211,9 +228,13 @@ class FacilLocation(Location):
     The location type for facil locations
     """
     def __init__(self, raw_facil, raw_gir, raw_geo, proj):
-        """
-        Merge Banner locations with the data of gender inclusive restrooms and
+        """Merge Banner locations with the data of gender inclusive restrooms and
         geometries from ArcGIS
+
+        :param raw_facil: Raw facil locations to be merged
+        :param raw_gir: Raw gender inclusive restrooms to be merged
+        :param raw_geo: Raw geometry data to be merged
+        :param proj: PROJ object to transform coordinates
         """
         address1 = raw_facil.get('address1')
         address2 = raw_facil.get('address2')
@@ -227,6 +248,7 @@ class FacilLocation(Location):
             )
 
         self._init_attributes()
+        self.source = 'facil-location'
         self.bldg_id = raw_facil['id']
         self.type = 'building'
         self.tags = []
@@ -248,7 +270,7 @@ class FacilLocation(Location):
         self.gir_count = raw_gir['count'] if raw_gir else 0
         self.gir_limit = bool(raw_gir['limit'].strip()) if raw_gir else None
         self.gir_locations = raw_gir['all'].strip() if raw_gir else None
-        self.arcGIS_abbreviation = (
+        self.arcgis_abbreviation = (
             (raw_geo.get('abbreviation') if raw_geo else None)
             or (raw_gir.get('abbreviation') if raw_gir else None)
         )
@@ -263,6 +285,12 @@ class FacilLocation(Location):
         self.synonyms = None
 
     def _get_pretty_campus(self, raw_campus):
+        """The helper function to generate pretty campus string
+
+        :param raw_campus: Raw campus string
+        :returns: Pretty campus string
+        :rtype: str
+        """
         campus_dict = {
             'cascadescampus': 'Cascades',
             'osucorvallis': 'Corvallis',
@@ -278,6 +306,13 @@ class FacilLocation(Location):
         return campus
 
     def _get_address(self, address1, address2):
+        """The helper function to generate full address
+
+        :param address1: Address 1 from raw data
+        :param address2: Address 2 from raw data
+        :returns: Pretty campus string
+        :rtype: str
+        """
         return f'{address1}\n{address2}' if address2 else address1
 
     def get_primary_id(self):
@@ -321,6 +356,7 @@ class ParkingLocation(Location):
         geometry = raw.get('geometry')
 
         self._init_attributes()
+        self.source = 'parking-location'
         self.prop_id = properties['Prop_ID']
         self.parking_zone_group = properties['ZoneGroup']
         self.type = 'parking'
@@ -377,6 +413,7 @@ class ServiceLocation(Location):
             weekly_menu = f'{week_menu_url}?loc={raw["loc_id"]}'
 
         self._init_attributes()
+        self.source = 'service-location'
         self.calendar_id = raw.get('calendar_id') or raw['calendarId']
         self.type = location_type
         self.campus = 'Corvallis'
