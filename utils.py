@@ -98,7 +98,8 @@ def format_library_hour(string):
     string = string.strip()
 
     # e.g. 7:00am -> 07:00am
-    return '0' + string if 0 < len(string) <= 7 else string
+    # e.g. 12:00pm -> 12:00pm
+    return f'0{string}' if 0 < len(string) < 7 else string
 
 
 def to_utc(dt):
