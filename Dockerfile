@@ -1,20 +1,27 @@
-FROM python:3.7
+# LICENSE UPL 1.0
+#
+# Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+#
+# ORACLE DOCKERFILES PROJECT
+
+FROM oraclelinux:7-slim
+ARG oracle_release
+ARG oracle_update
+
+# Install Oracle Instant Client
+RUN yum -y install oracle-release-el7 oracle-epel-release-el7 && \
+    yum-config-manager --enable ol7_oracle_instantclient && \
+    yum -y install oracle-instantclient${oracle_release}.${oracle_update}-basic oracle-instantclient${release}.${update}-devel oracle-instantclient${release}.${update}-sqlplus && \
+    echo /usr/lib/oracle/${oracle_release}.${oracle_update}/client64/lib > /etc/ld.so.conf.d/oracle-instantclient${release}.${update}.conf && \
+    ldconfig
+RUN yum -y install python36
+ENV PATH=$PATH:/usr/lib/oracle/${oracle_release}.${oracle_update}/client64/bin
+ENV PYTHONIOENCODING UTF-8
 
 WORKDIR /usr/src/app
 
 COPY . .
 
-RUN apt-get update && apt-get install -y libaio1 unzip
-RUN mkdir -p /opt/oracle
-RUN unzip bin/instantclient-basiclite-linux.x64-12.2.0.1.0.zip -d /opt/oracle
-RUN cd /opt/oracle/instantclient_12_2 \
-    && ln -s libclntsh.so.12.1 libclntsh.so \
-    && ln -s libocci.so.12.1 libocci.so
-RUN echo /opt/oracle/instantclient_12_2 > /etc/ld.so.conf.d/oracle-instantclient.conf \
-    && ldconfig
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
-RUN pip install --no-cache-dir -r requirements.txt
-
-USER nobody:nogroup
-
-CMD ["python", "build_artifacts.py", "--config=configuration.yaml"]
+CMD ["python3", "build_artifacts.py", "--config=configuration.yaml"]
