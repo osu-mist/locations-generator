@@ -1,6 +1,6 @@
 #!/bin/sh
-# run-locations-generator.sh - fetch and merge locations and push to AWS ES
-# Usage: run-locations-generator.sh <CONFIG_FILE>
+# locations-generator.sh - fetch and merge locations and push to AWS ES
+# Usage: locations-generator.sh <CONFIG_FILE>
 
 set -e
 
