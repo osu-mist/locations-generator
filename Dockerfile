@@ -17,7 +17,6 @@ RUN yum -y install oracle-release-el7 oracle-epel-release-el7 && \
 RUN yum -y install python36
 ENV PATH=$PATH:/usr/lib/oracle/18.5/client64/bin
 ENV PYTHONIOENCODING UTF-8
-COPY ./sqlnet.ora /usr/lib/oracle/18.5/client64/lib/network/admin/
 
 WORKDIR /usr/src/app
 
