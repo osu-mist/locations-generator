@@ -24,4 +24,4 @@ COPY . .
 
 RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
-CMD ["python3", "build_artifacts.py", "--config=configuration.yaml"]
+CMD ["sh", "./run-locations-generator.sh", "configuration.yaml"]
