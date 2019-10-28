@@ -39,3 +39,21 @@ The Python script to generate locations data for the [Locations API](https://git
     ```shell
     $ python es_manager.py --config=configuration.yaml
     ```
+
+## Docker
+
+1. Build the docker image:
+
+    ```shell
+    $ docker build -t locations-generator .
+    ```
+
+3. Run the app in a container:
+
+    ```shell
+    $ docker run --name locations-generator \
+                 --rm \
+                 -v "$PWD"/configuration.yaml:/usr/src/app/configuration.yaml:ro \
+                 -v "$PWD"/build:/usr/src/app/build \
+                 locations-generator
+    ```
