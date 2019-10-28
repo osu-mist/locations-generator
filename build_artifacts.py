@@ -409,12 +409,20 @@ class LocationsGenerator:
 
             for value in response.json().values():
                 datetime_format = '%Y-%m-%d %I:%M%p'
+                date_format = '%Y-%m-%d'
+
                 date = value['sortable_date']
                 begin = utils.format_library_hour(value['open'])
                 close = utils.format_library_hour(value['close'])
 
-                start = datetime.strptime(f'{date} {begin}', datetime_format)
-                end = datetime.strptime(f'{date} {close}', datetime_format)
+                start_format = datetime_format if begin else date_format
+                end_format = datetime_format if begin else date_format
+
+                raw_start = f'{date} {begin}'.strip()
+                raw_end = f'{date} {close}'.strip()
+
+                start = datetime.strptime(raw_start, start_format)
+                end = datetime.strptime(raw_end, end_format)
 
                 open_hours[date] = {
                     'summary': None,

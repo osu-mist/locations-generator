@@ -39,22 +39,3 @@ The Python script to generate locations data for the [Locations API](https://git
     ```shell
     $ python es_manager.py --config=configuration.yaml
     ```
-
-## Docker
-
-1. Download an [Oracle Instant Client 12.2 Basic Light zip (64 bits)](http://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html) and place into `./bin` folder.
-
-2. Build the docker image:
-
-    ```shell
-    $ docker build -t locations-generator .
-    ```
-
-3. Run the app in a container:
-
-    ```shell
-    $ docker run --name locations-generator
-                 -v "$PWD"/configuration.yaml:/usr/src/app/configuration.yaml:ro \
-                 -v "$PWD"/build:/usr/src/app/build \
-                 locations-generator
-    ```
