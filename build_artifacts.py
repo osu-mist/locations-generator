@@ -9,7 +9,7 @@ import xml.etree.ElementTree as et
 from cx_Oracle import connect
 import grequests
 from icalendar import Calendar
-from pyproj import Proj, transform
+from pyproj import Proj
 import requests
 from tabulate import tabulate
 
@@ -17,6 +17,7 @@ from locations.Locations import (
     ExtensionLocation,
     ExtraLocation,
     FacilLocation,
+    FieldLocation,
     ParkingLocation,
     ServiceLocation
 )
@@ -93,27 +94,27 @@ class LocationsGenerator:
         )
 
         field_locations = []
-        ignored_fieldss = []
+        ignored_fields = []
 
-        # for feature in field_coordinates['features']:
-        #     props = feature['properties']
-        #     # Only fetch the location if Expose is 'Y'
-        #     if (
-        #         utils.is_valid_field(props['Prop_ID'])
-        #         and utils.is_valid_field(props['ZoneGroup'])
-        #     ):
-        #         parking_location = ParkingLocation(feature)
-        #         parking_locations.append(parking_location)
-        #     else:
-        #         ignored_parkings.append(props['OBJECTID'])
+        for feature in field_coordinates['features']:
+            attrs = feature['attributes']
+            # Only fetch the location has a valid Prop_ID and Expose is 'Y'
+            if (
+                utils.is_valid_field(attrs['Prop_ID'])
+                and attrs['Expose'] == 'Y'
+            ):
+                field_location = FieldLocation(feature)
+                field_locations.append(field_location)
+            else:
+                ignored_fields.append(attrs['OBJECTID'])
 
-        # if ignored_parkings:
-        #     logger.warning((
-        #         "These parking lot OBJECTID's were ignored because they don't "
-        #         f"have a valid Prop_ID or ZoneGroup: {ignored_parkings}\n"
-        #     ))
+        if ignored_fields:
+            logger.warning((
+                "These fields OBJECTID's were ignored because they don't have"
+                f"a valid Prop_ID or shouldn't be exposed: {ignored_fields}\n"
+            ))
 
-        # return parking_locations
+        return field_locations
 
     def get_arcgis_geometries(self):
         """Get locations' geometry data via arcGIS API
@@ -433,6 +434,7 @@ class LocationsGenerator:
                         ))
                 elif 'rings' in geometry:
                     coordinates = _convert_polygon(geometry['rings'])
+                    feature['geometry']['type'] = 'rings'
                 feature['geometry']['coordinates'] = coordinates
 
         return response_json
@@ -525,7 +527,7 @@ class LocationsGenerator:
         locations += self.get_extra_locations()  # extra locations
         locations += self.get_extension_locations()  # extension locations
         locations += self.get_parking_locations()  # parking locations
-        self.get_fields()  # field locations
+        locations += self.get_fields()  # field locations
         locations += concurrent_res[0]  # dining locations
         locations += concurrent_res[1]['locations']  # extra service locations
 
