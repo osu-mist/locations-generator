@@ -49,7 +49,7 @@ class LocationsGenerator:
                                '+x_0=0.0 '
                                '+y_0=0 '
                                '+k=1.0 '
-                               '+units=m '
+                               '+units=ft '
                                '+nadgrids=@null '
                                '+wktext '
                                '+no_defs'))
