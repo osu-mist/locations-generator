@@ -30,6 +30,7 @@ class LocationsGenerator:
         self.config = utils.load_yaml(arguments.config)
         self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
         self.facil_query = utils.load_file('contrib/get_facil_locations.sql')
+        # NAD_1983_HARN_StatePlane_Oregon_North_FIPS_3601_Feet_Intl WKID: 2913
         self.proj_2913 = Proj(('+proj=lcc '
                                '+lat_0=43.66666666666666 '
                                '+lat_1=46 '
@@ -41,6 +42,7 @@ class LocationsGenerator:
                                '+towgs84=0,0,0,0,0,0,0 '
                                '+units=ft '
                                '+no_defs'))
+        # WGS_1984_Web_Mercator_Auxiliary_Sphere WKID: 3857
         self.proj_3857 = Proj(('+proj=merc '
                                '+a=6378137 '
                                '+b=6378137 '
