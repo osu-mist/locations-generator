@@ -50,7 +50,12 @@ class Location(ABC):
             'adaParkingSpaceCount': None,
             'motorcycleParkingSpaceCount': None,
             'evParkingSpaceCount': None,
-            'weeklyMenu': None
+            'weeklyMenu': None,
+            'notes': None,
+            'labels': {},
+            'steward': None,
+            'shape': {}
+
         }
 
     @abstractmethod
@@ -341,6 +346,65 @@ class FacilLocation(Location):
             'thumbnails': self.thumbnails,
             'website': self.website,
             'synonyms': self.synonyms
+        }
+
+        for key, value in attributes.items():
+            self.update_attributes(key, value)
+
+
+class FieldLocation(Location):
+    """
+    The location type for field locations
+    """
+    def __init__(self, raw):
+        attributes = raw['attributes']
+        geometry = raw.get('geometry')
+
+        self._init_attributes()
+        self.source = 'field-location'
+        self.prop_id = attributes['Prop_ID']
+        self.type = 'field'
+        self.name = attributes['Field_Nam']
+        self.description = attributes['Description']
+        self.notes = attributes['Notes']
+        self.label_1 = attributes['Label_1']
+        self.label_2 = attributes['Label_2']
+        self.expose = attributes['Expose']
+        self.steward = attributes['Steward']
+        self.image = attributes['Image']
+        self.shape_area = attributes['Shape__Area']
+        self.shape_length = attributes['Shape__Length']
+        self.shape_acres = attributes['Shape_Acres']
+        self.geometry = self._create_geometry(
+            geometry.get('type') if geometry else None,
+            geometry.get('coordinates') if geometry else None
+        )
+        self.merge = False
+        self.bldg_id = None
+        self.relationships = {'services': {'data': []}}
+
+    def get_primary_id(self):
+        return f'{self.prop_id}'
+
+    def _set_attributes(self):
+        attributes = {
+            'name': self.name,
+            'description': self.description,
+            'geometry': self.geometry,
+            'type': self.type,
+            'propId': self.prop_id,
+            'notes': self.notes,
+            'labels': {
+                1: self.label_1,
+                2: self.label_2
+            },
+            'steward': self.steward,
+            'images': [self.image],
+            'shape': {
+                'area': self.shape_area,
+                'length': self.shape_length,
+                'acres': self.shape_acres,
+            }
         }
 
         for key, value in attributes.items():

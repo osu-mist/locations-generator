@@ -17,6 +17,7 @@ from locations.Locations import (
     ExtensionLocation,
     ExtraLocation,
     FacilLocation,
+    FieldLocation,
     ParkingLocation,
     ServiceLocation
 )
@@ -29,15 +30,31 @@ class LocationsGenerator:
         self.config = utils.load_yaml(arguments.config)
         self.extra_data = utils.load_yaml('contrib/extra-data.yaml')
         self.facil_query = utils.load_file('contrib/get_facil_locations.sql')
-        self.proj = Proj(('+proj=lcc '
-                          '+lat_0=43.66666666666666 '
-                          '+lat_1=46 '
-                          '+lat_2=44.33333333333334 '
-                          '+lon_0=-120.5 '
-                          '+x_0=2500000.0001424 '
-                          '+y_0=0 +ellps=GRS80 '
-                          '+towgs84=0,0,0,0,0,0,0 '
-                          '+units=ft +no_defs'))
+        # NAD_1983_HARN_StatePlane_Oregon_North_FIPS_3601_Feet_Intl WKID: 2913
+        self.proj_2913 = Proj(('+proj=lcc '
+                               '+lat_0=43.66666666666666 '
+                               '+lat_1=46 '
+                               '+lat_2=44.33333333333334 '
+                               '+lon_0=-120.5 '
+                               '+x_0=2500000.0001424 '
+                               '+y_0=0 '
+                               '+ellps=GRS80 '
+                               '+towgs84=0,0,0,0,0,0,0 '
+                               '+units=ft '
+                               '+no_defs'))
+        # WGS_1984_Web_Mercator_Auxiliary_Sphere WKID: 3857
+        self.proj_3857 = Proj(('+proj=merc '
+                               '+a=6378137 '
+                               '+b=6378137 '
+                               '+lat_ts=0.0 '
+                               '+lon_0=0.0 '
+                               '+x_0=0.0 '
+                               '+y_0=0 '
+                               '+k=1.0 '
+                               '+units=ft '
+                               '+nadgrids=@null '
+                               '+wktext '
+                               '+no_defs'))
 
     def get_gender_inclusive_restrooms(self):
         """Get gender inclusive restrooms data via arcGIS API
@@ -65,6 +82,42 @@ class LocationsGenerator:
 
         return gender_inclusive_restrooms
 
+    def get_fields(self):
+        """Get fields data (e.g. grass fields, quads, etc.) via arcGIS API
+
+        :returns: Fields
+        :rtype: dict
+        """
+        config = self.config['locations']['arcGIS']
+        url = f"{config['url']}{config['fields']['endpoint']}"
+        params = config['fields']['params']
+        field_coordinates = self.get_converted_coordinates(
+            url, params, self.proj_3857
+        )
+
+        field_locations = []
+        ignored_fields = []
+
+        for feature in field_coordinates['features']:
+            attrs = feature['attributes']
+            # Only fetch the location has a valid Prop_ID and Expose is 'Y'
+            if (
+                utils.is_valid_field(attrs['Prop_ID'])
+                and attrs['Expose'] == 'Y'
+            ):
+                field_location = FieldLocation(feature)
+                field_locations.append(field_location)
+            else:
+                ignored_fields.append(attrs['OBJECTID'])
+
+        if ignored_fields:
+            logger.warning((
+                "These fields OBJECTID's were ignored because they don't have"
+                f"a valid Prop_ID or shouldn't be exposed: {ignored_fields}\n"
+            ))
+
+        return field_locations
+
     def get_arcgis_geometries(self):
         """Get locations' geometry data via arcGIS API
 
@@ -74,7 +127,9 @@ class LocationsGenerator:
         config = self.config['locations']['arcGIS']
         url = f"{config['url']}{config['buildingGeometries']['endpoint']}"
         params = config['buildingGeometries']['params']
-        buildings_coordinates = self.get_converted_coordinates(url, params)
+        buildings_coordinates = self.get_converted_coordinates(
+            url, params, self.proj_2913
+        )
 
         arcgis_coordinates = {}
 
@@ -108,7 +163,9 @@ class LocationsGenerator:
         config = self.config['locations']['arcGIS']
         url = f"{config['url']}{config['parkingGeometries']['endpoint']}"
         params = config['parkingGeometries']['params']
-        parkings_coordinates = self.get_converted_coordinates(url, params)
+        parkings_coordinates = self.get_converted_coordinates(
+            url, params, self.proj_2913
+        )
 
         parking_locations = []
         ignored_parkings = []
@@ -332,7 +389,7 @@ class LocationsGenerator:
                         open_hours[event_day].append(event_hours)
             return open_hours
 
-    def get_converted_coordinates(self, url, params):
+    def get_converted_coordinates(self, url, params, proj):
         """Convert ArcGIS coordinates to latitude and longitude
 
         :returns: Convert ArcGIS coordinates
@@ -349,7 +406,7 @@ class LocationsGenerator:
             for coordinate in polygon:
                 pairs = []
                 for pair in coordinate:
-                    lon_lat = list(self.proj(pair[0], pair[1], inverse=True))
+                    lon_lat = list(proj(pair[0], pair[1], inverse=True))
                     pair = lon_lat + pair[2:] if len(pair) >= 2 else lon_lat
                     pairs.append(pair)
                 coordinates.append(pairs)
@@ -362,20 +419,24 @@ class LocationsGenerator:
 
             for feature in response_json['features']:
                 geometry = feature['geometry']
-                geometry_type = geometry['type']
-
                 coordinates = []
-                if geometry_type == 'Polygon':
-                    coordinates = _convert_polygon(geometry['coordinates'])
-                elif geometry_type == 'MultiPolygon':
-                    for polygon in geometry['coordinates']:
-                        coordinates.append(_convert_polygon(polygon))
-                else:
-                    logger.warning((
-                        f'Ignoring unknown geometry type: {geometry_type}. '
-                        f'(id: {feature["id"]})'
-                    ))
 
+                if 'type' in geometry:
+                    geometry_type = geometry['type']
+
+                    if geometry_type == 'Polygon':
+                        coordinates = _convert_polygon(geometry['coordinates'])
+                    elif geometry_type == 'MultiPolygon':
+                        for polygon in geometry['coordinates']:
+                            coordinates.append(_convert_polygon(polygon))
+                    else:
+                        logger.warning((
+                            f'Ignoring unknown geometry type: {geometry_type}.'
+                            f' (id: {feature["id"]})'
+                        ))
+                elif 'rings' in geometry:
+                    coordinates = _convert_polygon(geometry['rings'])
+                    feature['geometry']['type'] = 'rings'
                 feature['geometry']['coordinates'] = coordinates
 
         return response_json
@@ -450,7 +511,7 @@ class LocationsGenerator:
             raw_gir = gender_inclusive_restrooms.get(location_id)
             raw_geo = arcgis_geometries.get(location_id)
             facil_location = FacilLocation(
-                raw_facil, raw_gir, raw_geo, self.proj
+                raw_facil, raw_gir, raw_geo, self.proj_2913
             )
 
             locations.append(facil_location)
@@ -468,6 +529,7 @@ class LocationsGenerator:
         locations += self.get_extra_locations()  # extra locations
         locations += self.get_extension_locations()  # extension locations
         locations += self.get_parking_locations()  # parking locations
+        locations += self.get_fields()  # field locations
         locations += concurrent_res[0]  # dining locations
         locations += concurrent_res[1]['locations']  # extra service locations
 
