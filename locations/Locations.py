@@ -461,6 +461,52 @@ class ParkingLocation(Location):
             self.update_attributes(key, value)
 
 
+class PlaceLocation(Location):
+    """
+    The location type for place locations
+    """
+    def __init__(self, raw):
+        attributes = raw['attributes']
+        geometry = raw.get('geometry')
+
+        self._init_attributes()
+        self.source = 'place-location'
+        self.prop_id = attributes['Prop_ID']
+        self.uid = attributes['uID']
+        self.type = 'place'
+        self.name = attributes['Name']
+        self.address = attributes['Loca']
+        self.description = attributes.get('Desc_')
+        self.website = attributes['URL_Home']
+        self.lat = attributes.get('Cent_Lat')
+        self.lon = attributes.get('Cent_Lon')
+        self.geo_location = self._create_geo_location(self.lon, self.lat)
+        self.geometry = self._create_geometry(
+            geometry.get('type') if geometry else None,
+            geometry.get('coordinates') if geometry else None
+        )
+        self.merge = False
+        self.bldg_id = None
+        self.relationships = {'services': {'data': []}}
+
+    def get_primary_id(self):
+        return f'{self.prop_id}{self.uid}'
+
+    def _set_attributes(self):
+        attributes = {
+            'name': self.name,
+            'description': self.description,
+            'address': self.address,
+            'type': self.type,
+            'propId': self.prop_id,
+            'geoLocation': self.geo_location,
+            'website': self.website
+        }
+
+        for key, value in attributes.items():
+            self.update_attributes(key, value)
+
+
 class ServiceLocation(Location):
     """
     The location type for dining locations and the locations from extra data
