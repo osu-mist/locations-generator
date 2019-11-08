@@ -467,7 +467,6 @@ class PlaceLocation(Location):
     """
     def __init__(self, raw):
         attributes = raw['attributes']
-        geometry = raw.get('geometry')
 
         self._init_attributes()
         self.source = 'place-location'
@@ -481,10 +480,6 @@ class PlaceLocation(Location):
         self.lat = attributes.get('Cent_Lat')
         self.lon = attributes.get('Cent_Lon')
         self.geo_location = self._create_geo_location(self.lon, self.lat)
-        self.geometry = self._create_geometry(
-            geometry.get('type') if geometry else None,
-            geometry.get('coordinates') if geometry else None
-        )
         self.merge = False
         self.bldg_id = None
         self.relationships = {'services': {'data': []}}

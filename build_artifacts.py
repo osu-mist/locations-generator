@@ -128,30 +128,29 @@ class LocationsGenerator:
         config = self.config['locations']['arcGIS']
         url = f"{config['url']}{config['places']['endpoint']}"
         params = config['fields']['params']
-        places_coordinates = self.get_converted_coordinates(
-            url, params, self.proj_3857
-        )
+        response = requests.get(url, params=params)
 
         place_locations = []
         ignored_places = []
 
-        for feature in places_coordinates['features']:
-            attrs = feature['attributes']
-            # Only fetch the location if Prop_ID and uID are valid
-            if (
-                utils.is_valid_field(attrs['Prop_ID'])
-                and utils.is_valid_field(attrs['uID'])
-            ):
-                place_location = PlaceLocation(feature)
-                place_locations.append(place_location)
-            else:
-                place_locations.append(attrs['OBJECTID'])
+        if response.status_code == 200:
+            for feature in response.json()['features']:
+                attrs = feature['attributes']
+                # Only fetch the location if Prop_ID and uID are valid
+                if (
+                    utils.is_valid_field(attrs['Prop_ID'])
+                    and utils.is_valid_field(attrs['uID'])
+                ):
+                    place_location = PlaceLocation(feature)
+                    place_locations.append(place_location)
+                else:
+                    place_locations.append(attrs['OBJECTID'])
 
-        if ignored_places:
-            logger.warning((
-                "These places OBJECTID's were ignored because they don't have"
-                f"a valid Prop_ID or shouldn't be exposed: {ignored_places}\n"
-            ))
+            if ignored_places:
+                logger.warning((
+                    "These places OBJECTID's were ignored because they don't have"
+                    f"a valid Prop_ID or shouldn't be exposed: {ignored_places}\n"
+                ))
 
         return place_locations
 
