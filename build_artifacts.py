@@ -19,6 +19,7 @@ from locations.Locations import (
     FacilLocation,
     FieldLocation,
     ParkingLocation,
+    PlaceLocation,
     ServiceLocation
 )
 import utils
@@ -85,7 +86,7 @@ class LocationsGenerator:
     def get_fields(self):
         """Get fields data (e.g. grass fields, quads, etc.) via arcGIS API
 
-        :returns: Fields
+        :returns: Field locations
         :rtype: dict
         """
         config = self.config['locations']['arcGIS']
@@ -117,6 +118,42 @@ class LocationsGenerator:
             ))
 
         return field_locations
+
+    def get_places(self):
+        """Get places data (e.g. Welcome Center, Challenge Course, etc.) via arcGIS API
+
+        :returns: Place locations
+        :rtype: dict
+        """
+        config = self.config['locations']['arcGIS']
+        url = f"{config['url']}{config['places']['endpoint']}"
+        params = config['fields']['params']
+        response = requests.get(url, params=params)
+
+        place_locations = []
+        ignored_places = []
+
+        if response.status_code == 200:
+            for feature in response.json()['features']:
+                attrs = feature['attributes']
+                # Only fetch the location if Prop_ID and uID are valid
+                if (
+                    utils.is_valid_field(attrs['Prop_ID'])
+                    and utils.is_valid_field(attrs['uID'])
+                ):
+                    place_location = PlaceLocation(feature)
+                    place_locations.append(place_location)
+                else:
+                    place_locations.append(attrs['OBJECTID'])
+
+            if ignored_places:
+                logger.warning((
+                    "These places OBJECTID's were ignored because they don't "
+                    "have a valid Prop_ID or shouldn't be exposed: "
+                    f"{ignored_places}\n"
+                ))
+
+        return place_locations
 
     def get_arcgis_geometries(self):
         """Get locations' geometry data via arcGIS API
@@ -530,6 +567,7 @@ class LocationsGenerator:
         locations += self.get_extension_locations()  # extension locations
         locations += self.get_parking_locations()  # parking locations
         locations += self.get_fields()  # field locations
+        locations += self.get_places()  # place locations
         locations += concurrent_res[0]  # dining locations
         locations += concurrent_res[1]['locations']  # extra service locations
 
