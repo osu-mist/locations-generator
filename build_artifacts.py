@@ -148,8 +148,9 @@ class LocationsGenerator:
 
             if ignored_places:
                 logger.warning((
-                    "These places OBJECTID's were ignored because they don't have"
-                    f"a valid Prop_ID or shouldn't be exposed: {ignored_places}\n"
+                    "These places OBJECTID's were ignored because they don't "
+                    "have a valid Prop_ID or shouldn't be exposed: "
+                    f"{ignored_places}\n"
                 ))
 
         return place_locations
