@@ -55,7 +55,6 @@ class Location(ABC):
             'labels': {},
             'steward': None,
             'shape': {}
-
         }
 
     @abstractmethod
