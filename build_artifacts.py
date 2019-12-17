@@ -443,8 +443,13 @@ class LocationsGenerator:
             for coordinate in polygon:
                 pairs = []
                 for pair in coordinate:
-                    lon_lat = list(proj(pair[0], pair[1], inverse=True))
-                    pair = lon_lat + pair[2:] if len(pair) >= 2 else lon_lat
+                    lon, lat = pair[0:2]
+                    # Only convert the coordinates if not in decimal format
+                    if not (-180 <= lon <= 180 and -90 <= lat <= 90):
+                        lon_lat = list(proj(lon, lat, inverse=True))
+                        pair = (
+                            lon_lat + pair[2:] if len(pair) >= 2 else lon_lat
+                        )
                     pairs.append(pair)
                 coordinates.append(pairs)
             return coordinates
