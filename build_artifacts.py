@@ -480,6 +480,8 @@ class LocationsGenerator:
                     coordinates = _convert_polygon(geometry['rings'])
                     feature['geometry']['type'] = 'rings'
                 feature['geometry']['coordinates'] = coordinates
+        else:
+            response.raise_for_status()
 
         return response_json
 
