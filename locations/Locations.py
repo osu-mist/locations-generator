@@ -257,7 +257,7 @@ class FacilLocation(Location):
         self.bldg_id = raw_facil['id']
         self.type = 'building'
         self.tags = []
-        self.bannerAbbreviation = raw_facil.get('abbreviation')
+        self.banner_abbreviation = raw_facil.get('abbreviation')
         self.name = raw_facil.get('name')
         self.campus = self._get_pretty_campus(raw_facil.get('campus'))
         self.address = self._get_address(address1, address2)
@@ -326,7 +326,7 @@ class FacilLocation(Location):
     def _set_attributes(self):
         attributes = {
             'name': self.name,
-            'bannerAbbreviation': self.abbreviation,
+            'bannerAbbreviation': self.banner_abbreviation,
             'arcgisAbbreviation': self.arcgis_abbreviation,
             'geoLocation': self.geo_location,
             'geometry': self.geometry,
