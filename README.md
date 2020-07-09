@@ -26,7 +26,7 @@ The Python script to generate locations data for the [Locations API](https://git
 3. Build the artifacts:
 
     ```shell
-    $ python build-artifacts.py --config=configuration.yaml
+    $ python build_artifacts.py --config=configuration.yaml
     ```
 
     If the script runs successfully, the following two files will be generated in the `./build` directory:
