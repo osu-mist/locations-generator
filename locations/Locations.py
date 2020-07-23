@@ -16,7 +16,7 @@ class Location(ABC):
         self.attr = {
             'name': None,
             'tags': [],
-            'openHours': {},
+            'openHours': None,
             'type': None,
             'parent': None,
             'locationId': None,
@@ -126,7 +126,6 @@ class Location(ABC):
         """
         self._set_attributes()
         resource_id = self.calculate_hash_id()
-
         return {
             'id': resource_id,
             'type': 'services' if self.type == 'services' else 'locations',
@@ -281,7 +280,7 @@ class FacilLocation(Location):
         )
         self.relationships = {'services': {'data': []}}
         self.merge = False
-        self.open_hours = {}
+        self.open_hours = None
         self.description = None
         self.descriptionHtml = None
         self.images = None
