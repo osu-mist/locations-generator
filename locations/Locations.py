@@ -21,7 +21,7 @@ class Location(ABC):
             'parent': None,
             'locationId': None,
             'bannerAbbreviation': None,
-            'arcGisAbbreviation': None,
+            'arcgisAbbreviation': None,
             'geoLocation': None,
             'geometry': None,
             'summary': None,
@@ -326,7 +326,7 @@ class FacilLocation(Location):
         attributes = {
             'name': self.name,
             'bannerAbbreviation': self.banner_abbreviation,
-            'arcGisAbbreviation': self.arcgis_abbreviation,
+            'arcgisAbbreviation': self.arcgis_abbreviation,
             'geoLocation': self.geo_location,
             'geometry': self.geometry,
             'type': self.type,
