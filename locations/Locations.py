@@ -91,8 +91,8 @@ class Location(ABC):
         """
         if longitude and latitude:
             return {
-                'lon': longitude,
-                'lat': latitude
+                'longitude': longitude,
+                'latitude': latitude
             }
 
     def _create_geometry(self, coordinates_type, coordinates):
