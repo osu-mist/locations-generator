@@ -435,8 +435,8 @@ class ParkingLocation(Location):
         lon_lat = None
         if self.lat and self.lon:
             lon_lat = proj(
-                self.lat,
                 self.lon,
+                self.lat,
                 inverse=True
             )
         self.geo_location = self._create_geo_location(
