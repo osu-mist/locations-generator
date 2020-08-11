@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import sys
 from pprint import pformat
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection, helpers
@@ -72,6 +73,18 @@ class ESManager:
             doc_type=index
         )
         logging.debug(pformat(result))
+        self.parse_bulk_errors(result)
+
+    def parse_bulk_errors(self, result):
+        if result['errors']:
+            for doc in result['items']:
+                doc_index = doc['index']
+                if 'error' in doc_index:
+                    index = doc_index['_index']
+                    doc_id = doc_index['_id']
+                    reason = doc_index['error']['caused_by']['reason']
+                    logger.error(f"[ERROR] {index} {doc_id} '{reason}'")
+            sys.exit(1)
 
 
 if __name__ == '__main__':

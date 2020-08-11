@@ -21,7 +21,7 @@ class Location(ABC):
             'parent': None,
             'locationId': None,
             'bannerAbbreviation': None,
-            'arcgisAbbreviation': None,
+            'arcGisAbbreviation': None,
             'geoLocation': None,
             'geometry': None,
             'summary': None,
@@ -91,8 +91,8 @@ class Location(ABC):
         """
         if longitude and latitude:
             return {
-                'longitude': longitude,
-                'latitude': latitude
+                'lon': longitude,
+                'lat': latitude
             }
 
     def _create_geometry(self, coordinates_type, coordinates):
@@ -150,8 +150,8 @@ class ExtraLocation(Location):
         self.type = raw.get('type')
         self.tags = raw.get('tags')
         self.geo_location = self._create_geo_location(
-            raw.get('latitude'),
-            raw.get('longitude')
+            raw.get('longitude'),
+            raw.get('latitude')
         )
         self.relationships = {'services': {'data': []}}
         self.merge = False
@@ -326,7 +326,7 @@ class FacilLocation(Location):
         attributes = {
             'name': self.name,
             'bannerAbbreviation': self.banner_abbreviation,
-            'arcgisAbbreviation': self.arcgis_abbreviation,
+            'arcGisAbbreviation': self.arcgis_abbreviation,
             'geoLocation': self.geo_location,
             'geometry': self.geometry,
             'type': self.type,
