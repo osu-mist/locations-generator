@@ -415,7 +415,7 @@ class ParkingLocation(Location):
     """
     The location type for parking locations
     """
-    def __init__(self, raw):
+    def __init__(self, raw, proj):
         properties = raw['properties']
         geometry = raw.get('geometry')
 
@@ -431,7 +431,18 @@ class ParkingLocation(Location):
         self.ev_parking_count = properties.get('EV_Spc')
         self.lat = properties.get('Cent_Lat')
         self.lon = properties.get('Cent_Lon')
-        self.geo_location = self._create_geo_location(self.lon, self.lat)
+
+        lon_lat = None
+        if self.lat and self.lon:
+            lon_lat = proj(
+                self.lat,
+                self.lon,
+                inverse=True
+            )
+        self.geo_location = self._create_geo_location(
+            lon_lat[0] if lon_lat else None,
+            lon_lat[1] if lon_lat else None
+        )
         self.geometry = self._create_geometry(
             geometry.get('type') if geometry else None,
             geometry.get('coordinates') if geometry else None
