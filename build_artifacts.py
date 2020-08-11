@@ -214,7 +214,7 @@ class LocationsGenerator:
                 utils.is_valid_field(props['Prop_ID'])
                 and utils.is_valid_field(props['ZoneGroup'])
             ):
-                parking_location = ParkingLocation(feature)
+                parking_location = ParkingLocation(feature, self.proj_2913)
                 parking_locations.append(parking_location)
             else:
                 ignored_parkings.append(props['OBJECTID'])
