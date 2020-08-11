@@ -1,8 +1,8 @@
 import io
 import json
 import logging
-import sys
 from pprint import pformat
+import sys
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection, helpers
 from requests_aws4auth import AWS4Auth
