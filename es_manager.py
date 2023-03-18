@@ -14,7 +14,7 @@ from utils import load_json, load_yaml, parse_arguments
 class ESManager:
     def __init__(self, config):
         config = load_yaml(config)['elasticsearch']
-        self.es = Elasticsearch('http://localhost:9200')
+        self.es = Elasticsearch('http://localhost:9201')
         self.current_ids = {}
         for index in ['locations', 'services']:
             scan = helpers.scan(
