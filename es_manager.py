@@ -13,19 +13,8 @@ from utils import load_json, load_yaml, parse_arguments
 
 class ESManager:
     def __init__(self, config):
-        config = load_yaml(config)['awsElasticsearch']
-        self.es = Elasticsearch(
-            hosts=[{'host': config['host'], 'port': config['port']}],
-            http_auth=AWS4Auth(
-                config['accessId'],
-                config['accessKey'],
-                config['region'],
-                'es'
-            ),
-            use_ssl=True,
-            verify_certs=True,
-            connection_class=RequestsHttpConnection
-        )
+        config = load_yaml(config)['elasticsearch']
+        self.es = Elasticsearch('http://localhost:9200')
         self.current_ids = {}
         for index in ['locations', 'services']:
             scan = helpers.scan(

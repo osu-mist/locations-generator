@@ -2,12 +2,12 @@ certifi==2019.6.16
 chardet==3.0.4
 cx-Oracle==7.2.0
 elasticsearch==6.4.0
-gevent==1.4.0
-greenlet==0.4.15
-grequests==0.3.0
+gevent==22.10.2
+greenlet==2.0.2
+grequests==0.6.0
 icalendar==4.0.3
 idna==2.8
-pyproj==2.2.1
+pyproj==3.4.1
 python-dateutil==2.8.0
 pytz==2019.1
 PyYAML==5.1.1
@@ -16,3 +16,5 @@ requests-aws4auth==0.9
 six==1.12.0
 tabulate==0.8.3
 urllib3==1.25.3
+zope.event==4.6
+zope.interface==5.5.2

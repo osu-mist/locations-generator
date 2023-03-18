@@ -272,7 +272,7 @@ class FacilLocation(Location):
             raw_geo['coordinates'] if raw_geo else None
         )
         self.gir_count = raw_gir['count'] if raw_gir else 0
-        self.gir_limit = bool(raw_gir['limit'].strip()) if raw_gir else None
+        self.gir_limit = bool(raw_gir['limit'].strip()) if raw_gir and raw_gir['limit'] else None
         self.gir_locations = raw_gir['all'].strip() if raw_gir else None
         self.arcgis_abbreviation = (
             (raw_geo.get('abbreviation') if raw_geo else None)

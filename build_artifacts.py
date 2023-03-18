@@ -461,25 +461,26 @@ class LocationsGenerator:
 
             for feature in response_json['features']:
                 geometry = feature['geometry']
-                coordinates = []
+                if geometry:
+                    coordinates = []
 
-                if 'type' in geometry:
-                    geometry_type = geometry['type']
+                    if 'type' in geometry:
+                        geometry_type = geometry['type']
 
-                    if geometry_type == 'Polygon':
-                        coordinates = _convert_polygon(geometry['coordinates'])
-                    elif geometry_type == 'MultiPolygon':
-                        for polygon in geometry['coordinates']:
-                            coordinates.append(_convert_polygon(polygon))
-                    else:
-                        logger.warning((
-                            f'Ignoring unknown geometry type: {geometry_type}.'
-                            f' (id: {feature["id"]})'
-                        ))
-                elif 'rings' in geometry:
-                    coordinates = _convert_polygon(geometry['rings'])
-                    feature['geometry']['type'] = 'rings'
-                feature['geometry']['coordinates'] = coordinates
+                        if geometry_type == 'Polygon':
+                            coordinates = _convert_polygon(geometry['coordinates'])
+                        elif geometry_type == 'MultiPolygon':
+                            for polygon in geometry['coordinates']:
+                                coordinates.append(_convert_polygon(polygon))
+                        else:
+                            logger.warning((
+                                f'Ignoring unknown geometry type: {geometry_type}.'
+                                f' (id: {feature["id"]})'
+                            ))
+                    elif 'rings' in geometry:
+                        coordinates = _convert_polygon(geometry['rings'])
+                        feature['geometry']['type'] = 'rings'
+                    feature['geometry']['coordinates'] = coordinates
         else:
             response.raise_for_status()
 
